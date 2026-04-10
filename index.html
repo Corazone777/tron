@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ibex</title>
+    <link rel="icon" href="data:,">
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #020118;
+            overflow: hidden;
+            font-family: 'Arial Black', sans-serif;
+        }
+
+        /* Restored Retro Synthwave Grid Background */
+        .grid-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            background-image:
+                linear-gradient(rgba(0, 243, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center bottom;
+        }
+
+        #stars-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        .sun-container {
+            position: absolute;
+            bottom: 30%; left: 50%;
+            transform: translateX(-50%);
+            width: 60vw; max-width: 800px;
+            z-index: 2;
+        }
+
+        .retro-sun {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 50%;
+            background: linear-gradient(to bottom, #00f3ff 0%, #0066ff 50%, #1a0040 100%);
+            box-shadow: 0 0 150px #0088ff, 0 0 300px #0044aa;
+            mask-image: repeating-linear-gradient(to bottom, #000 0%, #000 3%, transparent 3%, transparent 4%);
+            -webkit-mask-image: repeating-linear-gradient(to bottom, #000 0%, #000 3%, transparent 3%, transparent 4%);
+        }
+
+        /* Babylon Render Canvas */
+        #renderCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 3;
+            touch-action: none;
+            outline: none;
+        }
+
+        #birds-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        .logo-glow-wrap {
+            position: absolute;
+            top: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 25vw; max-width: 350px; min-width: 200px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .ibex-logo {
+            position: relative; width: 100%; pointer-events: none; opacity: 0.95;
+            filter: brightness(0) invert(1) drop-shadow(-2px -2px 0 rgba(0, 243, 255, 0.9));
+        }
+
+        .ibex-logo-outline, .logo-shine { display: none; }
+
+        /* CRT Scanlines Overlay */
+        .scanlines {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(0, 100, 255, 0.04), rgba(0, 255, 255, 0.02), rgba(0, 50, 255, 0.04));
+            background-size: 100% 4px, 6px 100%;
+            z-index: 10; pointer-events: none;
+            animation: scanlineScroll 8s linear infinite;
+        }
+
+        @keyframes scanlineScroll {
+            0% { background-position: 0 0, 0 0; }
+            100% { background-position: 0 800px, 0 0; }
+        }
+
+        /* Toggle Button - Question Mark */
+        .toggle-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(0, 20, 60, 0.6);
+            border: 2px solid rgba(0, 243, 255, 0.5);
+            color: #00f3ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 15px rgba(0, 100, 255, 0.3);
+            transition: all 0.3s ease;
+            outline: none;
+            pointer-events: auto;
+        }
+
+        .toggle-btn:hover {
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.8);
+            background: rgba(0, 40, 100, 0.8);
+            transform: scale(1.1);
+        }
+
+        .toggle-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: #00f3ff;
+            filter: drop-shadow(0 0 5px rgba(0, 243, 255, 0.8));
+        }
+
+        /* Holographic UI Panel */
+        .holo-panel {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
+            z-index: 20; width: 480px; padding: 36px 40px;
+            background: linear-gradient(135deg, rgba(0, 20, 60, 0.35), rgba(0, 10, 40, 0.5));
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 243, 255, 0.25); border-radius: 16px;
+            box-shadow: 0 0 30px rgba(0, 100, 255, 0.15), 0 0 80px rgba(0, 100, 255, 0.05), inset 0 0 30px rgba(0, 100, 255, 0.05);
+            font-family: 'Arial', sans-serif; color: rgba(0, 243, 255, 0.9);
+            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+            /* Hidden by default */
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .holo-panel.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .holo-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.6), transparent);
+        }
+
+        .holo-title {
+            font-size: 15px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+            text-align: center; margin-bottom: 28px; text-shadow: 0 0 12px rgba(0, 243, 255, 0.5);
+        }
+
+        .landscape-slider {
+            display: flex; position: relative; background: rgba(0, 20, 60, 0.4);
+            border: 1px solid rgba(0, 243, 255, 0.15); border-radius: 8px; overflow: hidden; margin-bottom: 20px;
+        }
+
+        .slider-option {
+            flex: 1; text-align: center; padding: 12px 8px; cursor: pointer; font-size: 13px;
+            letter-spacing: 1.2px; text-transform: uppercase; color: rgba(0, 200, 255, 0.5);
+            transition: color 0.4s ease; position: relative; z-index: 1; user-select: none;
+        }
+
+        .slider-option:hover { color: rgba(0, 243, 255, 0.8); }
+        .slider-option.active { color: #fff; text-shadow: 0 0 10px rgba(0, 243, 255, 0.8); }
+
+        .slider-indicator {
+            position: absolute; top: 2px; bottom: 2px; width: calc(33.333% - 4px);
+            background: rgba(0, 100, 255, 0.25); border: 1px solid rgba(0, 243, 255, 0.4); border-radius: 6px;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 15px rgba(0, 100, 255, 0.2); left: calc(33.333% + 2px);
+        }
+
+        .fte-label { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: rgba(0, 200, 255, 0.7); margin-bottom: 10px; }
+        .fte-row { display: flex; gap: 16px; }
+        .fte-col { flex: 1; }
+
+        .fte-input {
+            width: 100%; padding: 14px 16px; background: rgba(0, 20, 60, 0.4);
+            border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 8px; color: #fff;
+            font-size: 20px; font-family: 'Arial', sans-serif; letter-spacing: 2px;
+            outline: none; transition: border-color 0.3s, box-shadow 0.3s;
+            -moz-appearance: textfield; appearance: textfield; box-sizing: border-box;
+        }
+
+        .fte-input::-webkit-outer-spin-button, .fte-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .fte-input:focus { border-color: rgba(0, 243, 255, 0.5); box-shadow: 0 0 20px rgba(0, 100, 255, 0.15); }
+        .fte-input::placeholder { color: rgba(0, 200, 255, 0.25); font-size: 14px; letter-spacing: 1px; }
+
+        .budget-wrap { position: relative; display: flex; align-items: center; }
+        .budget-wrap .currency-prefix { position: absolute; left: 16px; color: rgba(0, 200, 255, 0.5); font-size: 20px; font-family: 'Arial', sans-serif; pointer-events: none; letter-spacing: 1px; }
+        .budget-wrap .currency-suffix { position: absolute; right: 16px; color: rgba(0, 200, 255, 0.35); font-size: 11px; font-family: 'Arial', sans-serif; letter-spacing: 2px; text-transform: uppercase; pointer-events: none; }
+        .budget-wrap .fte-input { padding-left: 32px; padding-right: 52px; }
+
+        /* Gold ROI Results Panel */
+        .roi-panel {
+            margin-top: 24px; padding: 24px 20px;
+            background: linear-gradient(135deg, rgba(60, 40, 0, 0.35), rgba(40, 25, 0, 0.5));
+            border: 1px solid rgba(255, 200, 50, 0.3); border-radius: 12px;
+            box-shadow: 0 0 30px rgba(255, 180, 0, 0.1), 0 0 60px rgba(255, 180, 0, 0.05), inset 0 0 20px rgba(255, 180, 0, 0.05);
+            position: relative; overflow: hidden; opacity: 0; max-height: 0;
+            transition: opacity 0.8s ease, max-height 0.8s ease, padding 0.8s ease; padding: 0 20px;
+        }
+
+        .roi-panel.visible { opacity: 1; max-height: 400px; padding: 24px 20px; }
+        .roi-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 200, 50, 0.7), transparent);
+        }
+        .roi-panel::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 300%;
+            background: linear-gradient(90deg, transparent 0%, transparent 30%, rgba(255, 200, 50, 0.08) 50%, transparent 70%, transparent 100%);
+            animation: roiSweep 4s cubic-bezier(0.4, 0, 0.6, 1) infinite; pointer-events: none;
+        }
+
+        @keyframes roiSweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(33.33%); } }
+        .roi-title { font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; text-align: center; margin-bottom: 20px; color: rgba(255, 200, 50, 0.9); text-shadow: 0 0 12px rgba(255, 180, 0, 0.5); }
+        .roi-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        .roi-stat { text-align: center; position: relative; }
+        .roi-stat-value { font-size: 28px; font-weight: 700; color: rgba(255, 220, 80, 1); text-shadow: 0 0 15px rgba(255, 180, 0, 0.6); letter-spacing: 1px; transition: color 0.15s ease; position: relative; }
+        .roi-stat-value.glitching { animation: roiGlitch 0.08s steps(1) infinite; }
+        .roi-stat-value.glitch-settle { animation: roiSettle 0.3s ease-out forwards; }
+
+        @keyframes roiGlitch {
+            0%   { text-shadow: 0 0 15px rgba(255,180,0,0.6), -2px 0 rgba(255,50,50,0.5); }
+            25%  { text-shadow: 0 0 15px rgba(255,180,0,0.6), 2px 0 rgba(50,255,50,0.5); }
+            50%  { text-shadow: 0 0 20px rgba(255,220,80,0.9), 0 -1px rgba(50,50,255,0.5); }
+            75%  { text-shadow: 0 0 15px rgba(255,180,0,0.6), -1px 1px rgba(255,255,50,0.5); }
+            100% { text-shadow: 0 0 15px rgba(255,180,0,0.6), 1px -1px rgba(255,50,255,0.5); }
+        }
+
+        @keyframes roiSettle {
+            0%   { text-shadow: 0 0 25px rgba(255,220,80,1), 0 0 40px rgba(255,180,0,0.5); transform: scale(1.08); }
+            100% { text-shadow: 0 0 15px rgba(255,180,0,0.6); transform: scale(1); }
+        }
+
+        .roi-stat-label { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255, 200, 50, 0.6); margin-top: 6px; line-height: 1.4; }
+
+        /* Tron grid-line animation */
+        .roi-panel .tron-line { position: absolute; background: rgba(255, 200, 50, 0.25); box-shadow: 0 0 6px rgba(255, 180, 0, 0.15); pointer-events: none; opacity: 0; }
+        .roi-panel .tron-line.horizontal { height: 1px; width: 0; left: 0; animation: tronExpandH 0.8s ease forwards, tronFadeIn 0.4s ease forwards; }
+        .roi-panel .tron-line.vertical { width: 1px; height: 0; top: 0; animation: tronExpandV 0.8s ease forwards, tronFadeIn 0.4s ease forwards; }
+        .roi-panel .tron-line.fade-out { animation: tronFadeOut 1.2s ease forwards !important; }
+        .roi-panel .tron-line.horizontal.fade-out { animation: tronShrinkH 1.2s ease forwards, tronFadeOut 1.2s ease forwards !important; }
+        .roi-panel .tron-line.vertical.fade-out { animation: tronShrinkV 1.2s ease forwards, tronFadeOut 1.2s ease forwards !important; }
+
+        @keyframes tronExpandH { to { width: 100%; } }
+        @keyframes tronExpandV { to { height: 100%; } }
+        @keyframes tronFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes tronFadeOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes tronShrinkH { from { width: 100%; } to { width: 0; left: 50%; } }
+        @keyframes tronShrinkV { from { height: 100%; } to { height: 0; top: 50%; } }
+
+        /* Hero Text & Flip Board */
+        .hero-text-container {
+            position: absolute;
+            top: 22%; /* Sits right below your logo */
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 5;
+            width: 90vw;
+            max-width: 800px;
+            pointer-events: none;
+            color: #fff;
+            text-shadow: 0 0 15px rgba(0, 243, 255, 0.8);
+        }
+
+        .hero-headline {
+            font-size: 22px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            letter-spacing: 1.5px;
+        }
+
+        .hero-subheadline {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.85);
+            font-family: 'Arial', sans-serif;
+            line-height: 1.8;
+            letter-spacing: 0.5px;
+        }
+
+        .flip-board {
+            display: inline-block;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 22px;
+            font-weight: bold;
+            color: #ff00ff; /* Retro neon pink */
+            text-shadow: 0 0 12px rgba(255, 0, 255, 0.8);
+            margin-top: 8px;
+            background: rgba(0, 20, 60, 0.6);
+            padding: 6px 16px;
+            border: 1px solid rgba(255, 0, 255, 0.5);
+            border-radius: 6px;
+            box-shadow: inset 0 0 10px rgba(255, 0, 255, 0.2);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="grid-bg"></div>
+    <canvas id="stars-canvas"></canvas>
+
+    <div class="sun-container" id="sun-container">
+        <div class="retro-sun"></div>
+    </div>
+
+    <canvas id="renderCanvas"></canvas>
+    <canvas id="birds-canvas"></canvas>
+
+<div class="hero-text-container">
+        <h1 class="hero-headline">Services that break down less generate more revenue</h1>
+        <p class="hero-subheadline">
+            That's why IBEX provides humans in the AI loop for<br>
+            <span class="flip-board" id="flip-board">[ PENTESTING ]</span>
+        </p>
+    </div>
+
+    <div class="logo-glow-wrap">
+
+        <img class="ibex-logo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTg2IiBoZWlnaHQ9IjY1IiB2aWV3Qm94PSIwIDAgMTg2IDY1IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZyBjbGlwLXBhdGg9InVybCgjY2xpcDBfNjIxXzEzMDkpIj4KPHBhdGggZD0iTTQzLjYxODQgNDEuMjAzTDQzLjQzMDIgMzMuMDc1NEw0OC45MjI1IDI0Ljk3NjRMNDYuMDcwOCAxNi42NzIzTDQ2LjYxODMgMTQuODU1NEw0Ny4xMzE2IDE2LjM1OUw0OS4xMDUgMTcuMjk4OEw1MC4yNjg0IDE5LjAwMTdMNTAuODUwMiAxNy41NjY1TDUzLjgzODcgMTYuNzIzNUw0OC4zNDY0IDEwLjM5MDFDNDguMzQ2NCAxMC4zOTAxIDQ4LjE2MzkgMTAuMzMzMSA0Ny44NzMxIDEwLjIzMDZDNDcuNzEzNCA2LjQyNTk3IDQ1LjMxMjMgMi43ODA4MiA0MS44NTA0IDEuMjQzMDJDMzAuMTUzMSAtNC4wMzEwNSAyMC4yOTc5IDguNTkwMjggMjUuNTMzNCAxOS4zNzc3TDI1Ljk3ODMgMTkuMTg5N0MyNC45NjMxIDE2LjA1NzEgMjUuMTc5OCAxMi42OTY4IDI2LjQyMzEgOS45MTE2NUMyOC41NTYyIDQuNTQwNzUgMzUuMDUyMiAyLjA0NjEgMzkuNzA2IDUuMzU1MjFDNDAuOTIwOCA2LjE4Njc2IDQxLjc0NzggNy4zODI4MyA0MS45OTMgOC42MDE2N0wzNy43MDk5IDkuODE0ODNMMzkuNjIwNSAxMC42NTc4TDM2LjQzMjMgMjAuODY0Mkw0MS40MTcgMjAuNTc5NEwzNi4xMzU4IDIyLjA3NzNMMzUuMTQ5MSAyMi4zNTA3TDIzLjE1NTIgMjUuNzM5NkwxNi45MTU4IDI0LjM5NTRMMjAuNjU3MiAzMC40MjEzTDEzLjc3MzMgNTEuOTc5TDYuNTMwMjIgNTQuMDIzN0wwIDYxLjU5ODdINTEuNzc0MUw0Ni4wMjUyIDU3Ljc4ODRMNTEuNzc0MSA1Mi42NjI0VjQ2LjEzNTNMNTYuNTcwNSAzNy41NDY0TDQzLjYyNDEgNDEuMjAzSDQzLjYxODRaTTMzLjI2NyA0My4zMzg4TDE5LjI3NyA0OS45Mjg2TDI1LjkwNDEgMzkuMjc3OUwyMi40MzY2IDM4Ljc0MjVMMzcuNDk4OSAzNC40NzA5TDQwLjEzOTUgNDIuMjM5NkwzMy4yNzI3IDQzLjMzODhIMzMuMjY3WiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNNzIuMjM3MyA0NC40MjA4VjEzLjA3MjVIODIuMzIwNlY0NC40MjA4SDcyLjIzNzNaIiBmaWxsPSIjMjYwMDNDIi8+CjxwYXRoIGQ9Ik0xMTIuNTE0IDE0LjA1MjFDMTEzLjgzNyAxNC43MDcxIDExNC44ODYgMTUuNjI0MSAxMTUuNjYyIDE2LjgwODhDMTE2LjQzNyAxNy45OTM1IDExNi44MjUgMTkuMzE0OCAxMTYuODI1IDIwLjc3MjlDMTE2LjgyNSAyNC42Mjg4IDExNS4wNzQgMjcuMDYwOCAxMTEuNTc4IDI4LjA2MzJWMjguMjQ1NEMxMTUuNTY1IDI5LjE1NjcgMTE3LjU1NSAzMS43NzEgMTE3LjU1NSAzNi4wODI1QzExNy41NTUgMzcuNzIyOCAxMTcuMTUgMzkuMTc1MiAxMTYuMzQ2IDQwLjQzMzlDMTE1LjU0MiA0MS42OTI2IDExNC40MzYgNDIuNjcyMyAxMTMuMDM4IDQzLjM3MjhDMTExLjY0MSA0NC4wNzM0IDExMC4xMDEgNDQuNDIwOCAxMDguNDMgNDQuNDIwOEg4Ny4yNTk2VjEzLjA3MjVIMTA4LjE1NkMxMDkuNzM2IDEzLjA3MjUgMTExLjE5IDEzLjM5NzIgMTEyLjUxNCAxNC4wNTIxWk05Ny4zNDMgMjUuMjgzOEgxMDQuMjc4QzEwNC45NDUgMjUuMjgzOCAxMDUuNTA0IDI1LjA1MDIgMTA1Ljk0MyAyNC41Nzc1QzEwNi4zODMgMjQuMTA0OCAxMDYuNjA1IDIzLjUyMzggMTA2LjYwNSAyMi44MjMzVjIyLjM2NzZDMTA2LjYwNSAyMS43MDEzIDEwNi4zNzcgMjEuMTMxNyAxMDUuOTIxIDIwLjY1OUMxMDUuNDY0IDIwLjE4NjIgMTA0LjkxNyAxOS45NTI3IDEwNC4yNzggMTkuOTUyN0g5Ny4zNDNWMjUuMjgzOFpNOTcuMzQzIDM3LjEzMDVIMTA1LjAwOEMxMDUuNjc1IDM3LjEzMDUgMTA2LjIzNCAzNi44OTcgMTA2LjY3MyAzNi40MjQzQzEwNy4xMTMgMzUuOTUxNSAxMDcuMzM1IDM1LjM3MDYgMTA3LjMzNSAzNC42N1YzNC4yMTQ0QzEwNy4zMzUgMzMuNTEzOCAxMDcuMTEzIDMyLjkzMjkgMTA2LjY3MyAzMi40NjAyQzEwNi4yMzQgMzEuOTg3NCAxMDUuNjc1IDMxLjc1MzkgMTA1LjAwOCAzMS43NTM5SDk3LjM0M1YzNy4xMzA1WiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNMTIwLjkwMyAxMy4wNzI1SDE0OC4wNTFWMjAuNTkwNkgxMzAuOTg2VjI0LjkxOTJIMTQ1LjU4N1YzMi4xMTg0SDEzMC45ODZWMzYuOTAyN0gxNDguMzdWNDQuNDIwOEgxMjAuOTAzVjEzLjA3MjVaIiBmaWxsPSIjMjYwMDNDIi8+CjxwYXRoIGQ9Ik0xODQuNzQ1IDQ0LjQyMDhIMTcyLjUxOEwxNjYuNzIzIDM0LjY3SDE2Ni41NDFMMTYwLjc0NiA0NC40MjA4SDE0OS40MzFMMTYwLjY1NSAyNy44MzU0TDE1MC41MjYgMTMuMDcyNUgxNjIuNzA4TDE2Ny40NTMgMjEuMDkxOEgxNjcuNjM2TDE3Mi40MjYgMTMuMDcyNUgxODMuNjk2TDE3My41MjEgMjcuODgwOUwxODQuNzQ1IDQ0LjQyMDhaIiBmaWxsPSIjMjYwMDNDIi8+CjxwYXRoIGQ9Ik03NS43OTYyIDYxLjc3NTFDNzUuMzA1NyA2MS43NzUxIDc0LjgyNjYgNjEuNzA2OCA3NC4zNTkgNjEuNTc1OEM3My44OTEzIDYxLjQ0NDggNzMuNDU3OCA2MS4yMzQxIDczLjA3NTcgNjAuOTU1QzcyLjY5MzYgNjAuNjc1OSA3Mi4zNjg1IDYwLjMwNTcgNzIuMTIzMyA1OS44NTU3QzcxLjg3MjMgNTkuNDA1OCA3MS43MTgzIDU4Ljg3MDQgNzEuNjYxMyA1OC4yNDM5SDczLjMwMzhDNzMuMzgzNyA1OC43NTA4IDczLjU0OTEgNTkuMTU1MiA3My44MDU3IDU5LjQ0NTdDNzQuMDYyNCA1OS43MzYxIDc0LjM2NDcgNTkuOTQ2OSA3NC43MjQgNjAuMDc3OUM3NS4wNzc2IDYwLjIwMzIgNzUuNDQ4MyA2MC4yNjU4IDc1LjgzMDQgNjAuMjY1OEM3Ni4yMTI1IDYwLjI2NTggNzYuNTcxOCA2MC4yMDMyIDc2Ljg4NTUgNjAuMDgzNkM3Ny4xOTkyIDU5Ljk2MzkgNzcuNDUwMSA1OS43ODE3IDc3LjYzMjYgNTkuNTQ4MkM3Ny44MTUxIDU5LjMxNDcgNzcuOTEyMSA1OS4wMjk5IDc3LjkxMjEgNTguNjk5NUM3Ny45MTIxIDU4LjM2OTIgNzcuODIwOCA1OC4wOTAxIDc3LjYzODMgNTcuODM5NUM3Ny40NTU4IDU3LjU4ODkgNzcuMDkwOCA1Ny40MTggNzYuNTMxOSA1Ny4zMjEyTDc0LjcxMjYgNTYuOTg1MkM3My44OTcgNTYuODMxNCA3My4yNTgyIDU2LjQ5NTQgNzIuNzc5MiA1NS45ODg1QzcyLjMwNTggNTUuNDgxNiA3Mi4wNjYyIDU0Ljg3NzggNzIuMDY2MiA1NC4xODNDNzIuMDY2MiA1My41NDUxIDcyLjIzMTYgNTMuMDA0IDcyLjU1NjcgNTIuNTU0QzcyLjg4MTggNTIuMTA0MSA3My4zMjEgNTEuNzYyNCA3My44NjI4IDUxLjUxNzRDNzQuNDA0NiA1MS4yNzI1IDc1LjAwMzQgNTEuMTU4NiA3NS42NTkzIDUxLjE1ODZDNzYuMzE1MiA1MS4xNTg2IDc2Ljk1MzkgNTEuMjc4MiA3Ny40OTU3IDUxLjUxMThDNzguMDMxOCA1MS43NDUzIDc4LjQ3NjcgNTIuMDk4NCA3OC44MTg5IDUyLjU3NjhDNzkuMTYxMSA1My4wNDk2IDc5LjM2NjQgNTMuNjU5IDc5LjQzNDggNTQuNDA1MUg3Ny43NTgxQzc3LjY4OTYgNTMuOTY2NSA3Ny41NTI4IDUzLjYxOTEgNzcuMzUzMiA1My4zNjI4Qzc3LjE1MzUgNTMuMTA2NSA3Ni45MDgzIDUyLjkyOTkgNzYuNjE3NCA1Mi44MjE3Qzc2LjMyNjYgNTIuNzEzNSA3Ni4wMTg2IDUyLjY2MjMgNzUuNjgyMSA1Mi42NjIzQzc1LjM3OTggNTIuNjYyMyA3NS4wNzE5IDUyLjcxMzUgNzQuNzYzOSA1Mi44MTAzQzc0LjQ1NTkgNTIuOTA3MiA3NC4yMDUgNTMuMDY2NiA3NC4wMDUzIDUzLjI3NzRDNzMuODExNCA1My40OTM4IDczLjcxNDUgNTMuNzc4NiA3My43MTQ1IDU0LjE0MzFDNzMuNzE0NSA1NC40Njc3IDczLjgzNDIgNTQuNzQ2OCA3NC4wNjgxIDU0Ljk4MDNDNzQuMzAxOSA1NS4yMTM5IDc0LjY2NjkgNTUuMzc5IDc1LjE1NzQgNTUuNDY0NUw3Ni44NDU2IDU1Ljc4OTFDNzcuNzA2OCA1NS45NDI5IDc4LjM3OTcgNTYuMjU2MSA3OC44NTg4IDU2LjcxMThDNzkuMzM3OSA1Ny4xNzMxIDc5LjU3NzQgNTcuODIyNCA3OS41Nzc0IDU4LjY1OTdDNzkuNTc3NCA1OS4xNjY2IDc5LjQ2OTEgNTkuNjE2NSA3OS4yNTIzIDYwLjAwOTVDNzkuMDM1NiA2MC40MDI1IDc4Ljc0NDcgNjAuNzI3MSA3OC4zNzk3IDYwLjk4MzRDNzguMDE0NyA2MS4yNDU0IDc3LjYwNDEgNjEuNDM5MSA3Ny4xNTkyIDYxLjU3NThDNzYuNzE0NCA2MS43MTI1IDc2LjI1ODEgNjEuNzgwOCA3NS43ODQ4IDYxLjc4MDhMNzUuNzk2MiA2MS43NzUxWiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNODMuNTU4MyA2MS41OTg2QzgzLjA5MDYgNjEuNTk4NiA4Mi42OTE0IDYxLjU0MTYgODIuMzY2MyA2MS40Mjc3QzgyLjA0MTIgNjEuMzEzOCA4MS43OTYgNjEuMTAzMSA4MS42MzA2IDYwLjc4OThDODEuNDY1MiA2MC40NzY2IDgxLjM3OTYgNjAuMDIwOSA4MS4zNzk2IDU5LjQyODZWNTUuODA2Mkg4MC4xMzA2VjU0LjMyNTRIODEuMzc5NlY1Mi40MTc0SDgzLjE0MTlWNTQuMzI1NEg4NS4wNTI1VjU1LjgwNjJIODMuMTQxOVY1OS4xOTUxQzgzLjE0MTkgNTkuNDU3MSA4My4xNzA0IDU5LjY1NjQgODMuMjIxOCA1OS43ODE3QzgzLjI3MzEgNTkuOTA3IDgzLjM3MDEgNTkuOTkyNCA4My41MDY5IDYwLjAzOEM4My42NDM4IDYwLjA4MzYgODMuODQzNCA2MC4xMDYzIDg0LjExMTUgNjAuMTA2M0g4NC45Nzg0VjYxLjYwNDNIODMuNTUyNkw4My41NTgzIDYxLjU5ODZaIiBmaWxsPSIjMjYwMDNDIi8+CjxwYXRoIGQ9Ik04OC4xMzggNjEuNzc1MUM4Ny41NzkxIDYxLjc3NTEgODcuMTA1NyA2MS42NzI2IDg2LjcxMjIgNjEuNDczM0M4Ni4zMTg3IDYxLjI3MzkgODYuMDIyMSA2MS4wMDYyIDg1LjgxNjggNjAuNjc1OUM4NS42MTE1IDYwLjM0NTUgODUuNTA4OCA1OS45ODEgODUuNTA4OCA1OS41ODhDODUuNTA4OCA1OC44MjQ4IDg1Ljc4MjUgNTguMjMyNSA4Ni4zNDE1IDU3LjgxMUM4Ni44OTQ3IDU3LjM4OTUgODcuNjE5IDU3LjE3ODggODguNTIwMSA1Ny4xNzg4Qzg4LjkzMDcgNTcuMTc4OCA4OS4yOTU4IDU3LjIxMyA4OS42MTUxIDU3LjI3NTZDODkuOTM0NSA1Ny4zMzgzIDkwLjE5MTIgNTcuNDAwOSA5MC4zODUxIDU3LjQ1NzlWNTcuMTIxOUM5MC4zODUxIDU2LjU4NjUgOTAuMjM2OCA1Ni4xODc4IDg5LjkzNDUgNTUuOTMxNUM4OS42MzIyIDU1LjY3NTIgODkuMjQ0NCA1NS41NDk5IDg4Ljc2NTMgNTUuNTQ5OUM4OC40MTE3IDU1LjU0OTkgODguMDk4MSA1NS42MTgyIDg3LjgyNDMgNTUuNzYwNkM4Ny41NTA2IDU1LjkwMyA4Ny4zNzM4IDU2LjE1OTMgODcuMjkzOSA1Ni41Mjk1SDg1LjYxNzJDODUuNjc0MiA1NS45OTk4IDg1Ljg1MSA1NS41NjEzIDg2LjE0NzYgNTUuMjA4MkM4Ni40NDQxIDU0Ljg1NSA4Ni44MTQ4IDU0LjU4NzMgODcuMjcxMSA1NC40MTA4Qzg3LjcyNzQgNTQuMjI4NSA4OC4yMjM1IDU0LjEzNzQgODguNzY1MyA1NC4xMzc0Qzg5LjgzMTkgNTQuMTM3NCA5MC42NTg4IDU0LjM5OTQgOTEuMjUyIDU0LjkyMzRDOTEuODQ1MSA1NS40NDc0IDkyLjE0MTcgNTYuMTc2NCA5Mi4xNDE3IDU3LjExNjJWNTguODkzMkM5Mi4xNDE3IDU5LjI2MzQgOTIuMTY0NSA1OS41MzY4IDkyLjIxMDEgNTkuNzA3NkM5Mi4yNTU3IDU5Ljg3ODUgOTIuMzI5OSA1OS45ODY3IDkyLjQzMjUgNjAuMDMyM0M5Mi41MzUyIDYwLjA3NzggOTIuNjcyMSA2MC4xMDA2IDkyLjgzNzUgNjAuMTAwNkg5Mi45MTE2VjYxLjU5ODZIOTIuNTEyNEM5Mi4wMTA1IDYxLjU5ODYgOTEuNTk0MiA2MS41MzAyIDkxLjI1NzcgNjEuMzg3OEM5MC45MjEyIDYxLjI0NTQgOTAuNjgxNiA2MC45NjY0IDkwLjU0NDggNjAuNTQ0OUM5MC4yOTk1IDYwLjg5OCA4OS45NzQ0IDYxLjE4ODUgODkuNTc1MiA2MS40MjJDODkuMTcwMyA2MS42NTU1IDg4LjY5NjkgNjEuNzc1MSA4OC4xMzggNjEuNzc1MVpNODguNTIwMSA2MC40MTM5Qzg4Ljg2MjMgNjAuNDEzOSA4OS4xNTg5IDYwLjMzNDEgODkuMzk4NCA2MC4xNzQ3Qzg5LjY0MzYgNjAuMDE1MiA4OS44NDMzIDU5Ljc5ODggODkuOTkxNSA1OS41MzExQzkwLjE0NTUgNTkuMjYzNCA5MC4yNDI1IDU4Ljk2NzIgOTAuMjkzOCA1OC42NDI2QzkwLjA4ODUgNTguNTg1NiA4OS44NDMzIDU4LjUyMyA4OS41NTgxIDU4LjQ2NkM4OS4yNzI5IDU4LjQwOSA4OC45ODIxIDU4LjM4MDYgODguNjkxMiA1OC4zODA2Qzg4LjI1MjEgNTguMzgwNiA4Ny45MDQyIDU4LjQ3NzQgODcuNjUzMiA1OC42NzFDODcuNDAyMyA1OC44NjQ3IDg3LjI3NjggNTkuMTMyNCA4Ny4yNzY4IDU5LjQ2MjdDODcuMjc2OCA1OS43MzYxIDg3LjM4NTIgNTkuOTYzOSA4Ny42MDc2IDYwLjE0NjJDODcuODI0MyA2MC4zMjg0IDg4LjEyNjYgNjAuNDE5NiA4OC41MDg3IDYwLjQxOTZMODguNTIwMSA2MC40MTM5WiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNOTIuODA5IDU1LjgwNjJWNTQuMzI1M0g5Ny4wNDA4VjU1LjgwNjJIOTIuODA5Wk05My44MzU1IDYxLjU5ODVWNTMuMzExNUM5My44MzU1IDUyLjY2NzkgOTMuOTA5NyA1Mi4xNzgxIDk0LjA2MzcgNTEuODUzNUM5NC4yMTc3IDUxLjUyODggOTQuNDYyOSA1MS4zMDY3IDk0LjgwNTEgNTEuMTk4NUM5NS4xNDczIDUxLjA5MDMgOTUuNjAzNiA1MS4wMzkgOTYuMTY4MiA1MS4wMzlIOTcuMDM1MVY1Mi41MzY5SDk2LjUwNDdDOTYuMTM0IDUyLjUzNjkgOTUuODg4NyA1Mi41OTM5IDk1Ljc2ODkgNTIuNzA3OEM5NS42NDkyIDUyLjgyMTcgOTUuNTkyMSA1My4wNTUyIDk1LjU5MjEgNTMuNDE5N1Y2MS42MDQySDkzLjgyOThMOTMuODM1NSA2MS41OTg1WiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNOTguNjg5IDYxLjU5ODVWNTUuODA2Mkg5Ny42NjI0VjU0LjMyNTNIOTguNjg5VjUzLjMxMTVDOTguNjg5IDUyLjY2NzkgOTguNzYzMSA1Mi4xNzgxIDk4LjkxNzEgNTEuODUzNUM5OS4wNzExIDUxLjUyODggOTkuMzE2NCA1MS4zMDY3IDk5LjY1ODYgNTEuMTk4NUMxMDAuMDAxIDUxLjA5MDMgMTAwLjQ1NyA1MS4wMzkgMTAxLjAyMiA1MS4wMzlIMTAxLjg4OVY1Mi41MzY5SDEwMS4zNThDMTAwLjk4NyA1Mi41MzY5IDEwMC43NDIgNTIuNTkzOSAxMDAuNjIyIDUyLjcwNzhDMTAwLjUwMyA1Mi44MjE3IDEwMC40NDYgNTMuMDU1MiAxMDAuNDQ2IDUzLjQxOTdWNTQuMzMxSDEwNC42NlY2MS42MDQySDEwMi44OThWNTUuODExOUgxMDAuNDQ2VjYxLjYwNDJIOTguNjgzM0w5OC42ODkgNjEuNTk4NVpNMTAyLjY3IDUzLjE4MDVWNTEuMTEzSDEwNC45MTdWNTMuMTgwNUgxMDIuNjdaIiBmaWxsPSIjMjYwMDNDIi8+CjxwYXRoIGQ9Ik0xMDUuOTc4IDYxLjU5ODZWNTQuMzI1NEgxMDcuNzRWNTUuNDUzMUMxMDcuOTg1IDU1LjA1NDQgMTA4LjMxNiA1NC43MzU0IDEwOC43MzIgNTQuNTAxOUMxMDkuMTQ5IDU0LjI2ODQgMTA5LjYyOCA1NC4xNDg4IDExMC4xNjQgNTQuMTQ4OEMxMTEuMDY1IDU0LjE0ODggMTExLjc2NyA1NC40Mjc5IDExMi4yNjMgNTQuOTkxN0MxMTIuNzY1IDU1LjU1NTYgMTEzLjAxIDU2LjM3NTggMTEzLjAxIDU3LjQ2MzZWNjEuNTk4NkgxMTEuMjQ4VjU3LjY0MDJDMTExLjI0OCA1Ni45ODUyIDExMS4xMTEgNTYuNDg5NyAxMTAuODQzIDU2LjE1MzZDMTEwLjU3NSA1NS44MTc2IDExMC4xNjQgNTUuNjQ2NyAxMDkuNjE2IDU1LjY0NjdDMTA5LjA2OSA1NS42NDY3IDEwOC42MyA1NS44MzQ3IDEwOC4yNyA1Ni4yMTYzQzEwNy45MTEgNTYuNTk3OSAxMDcuNzM0IDU3LjEzOSAxMDcuNzM0IDU3Ljg0NTJWNjEuNTk4NkgxMDUuOTcySDEwNS45NzhaIiBmaWxsPSIjMjYwMDNDIi8+CjxwYXRoIGQ9Ik0xMTguMDkxIDY0Ljk5ODhDMTE3LjQ2NCA2NC45OTg4IDExNi44NzEgNjQuODk2MyAxMTYuMzEyIDY0LjY5MTNDMTE1Ljc1MyA2NC40ODYyIDExNS4yODUgNjQuMTY3MyAxMTQuOTAzIDYzLjc0MDFDMTE0LjUyMSA2My4zMDcyIDExNC4yODcgNjIuNzYwNSAxMTQuMTk2IDYyLjA5OThIMTE1Ljk0MUMxMTYuMDUgNjIuNTIxMyAxMTYuMjk1IDYyLjg1NzMgMTE2LjY3NyA2My4xMDIyQzExNy4wNTkgNjMuMzUyOCAxMTcuNTIxIDYzLjQ3ODEgMTE4LjA1NyA2My40NzgxQzExOC40MzkgNjMuNDc4MSAxMTguNzkzIDYzLjM5ODQgMTE5LjEyNCA2My4yMzg5QzExOS40NDkgNjMuMDc5NCAxMTkuNzExIDYyLjgyODggMTE5LjkwNSA2Mi40OTg1QzEyMC4wOTMgNjIuMTY4MSAxMjAuMTkgNjEuNzQ2NyAxMjAuMTkgNjEuMjM5OFY2MC4zQzEyMC4wNDIgNjAuNTQ0OSAxMTkuODU0IDYwLjc2NyAxMTkuNjIgNjAuOTcyMUMxMTkuMzg2IDYxLjE3NzEgMTE5LjEwMSA2MS4zNDIzIDExOC43NyA2MS40NzMzQzExOC40MzkgNjEuNTk4NiAxMTguMDU3IDYxLjY2MTIgMTE3LjYyNCA2MS42NjEyQzExNi45MzkgNjEuNjYxMiAxMTYuMzE4IDYxLjQ5NjEgMTE1Ljc2NSA2MS4xNzE0QzExNS4yMTEgNjAuODQxMSAxMTQuNzcyIDYwLjM5NjggMTE0LjQ1MyA1OS44MjE2QzExNC4xMjggNTkuMjUyIDExMy45NjggNTguNjA4NCAxMTMuOTY4IDU3Ljg5MDhDMTEzLjk2OCA1Ny4xNzMxIDExNC4xMjggNTYuNTUyMyAxMTQuNDUzIDU1Ljk4MjhDMTE0Ljc3OCA1NS40MTMyIDExNS4yMTEgNTQuOTY5IDExNS43NjUgNTQuNjM4NkMxMTYuMzE4IDU0LjMxNCAxMTYuOTM5IDU0LjE0ODggMTE3LjYzNSA1NC4xNDg4QzExOC4yMTEgNTQuMTQ4OCAxMTguNzE5IDU0LjI2ODQgMTE5LjE2NCA1NC41MDc2QzExOS42MDMgNTQuNzQ2OCAxMTkuOTQ1IDU1LjA0ODcgMTIwLjE5IDU1LjQwNzVWNTQuMzE5N0gxMjEuOTUzVjYxLjE1NDNDMTIxLjk1MyA2MS45ODU5IDEyMS43ODEgNjIuNjg2NCAxMjEuNDM0IDYzLjI2MTdDMTIxLjA4NiA2My44MzEyIDEyMC42MTggNjQuMjY0MSAxMjAuMDM2IDY0LjU2MDNDMTE5LjQ1NSA2NC44NTY0IDExOC44MDQgNjQuOTk4OCAxMTguMDkxIDY0Ljk5ODhaTTExNy45NzIgNjAuMTI5MUMxMTguNDA1IDYwLjEyOTEgMTE4Ljc4MiA2MC4wMzIzIDExOS4xMTIgNTkuODM4N0MxMTkuNDM3IDU5LjY0NSAxMTkuNyA1OS4zNzczIDExOS44OTQgNTkuMDQxM0MxMjAuMDgyIDU4LjcwNTIgMTIwLjE3OSA1OC4zMjM2IDEyMC4xNzkgNTcuOTAyMkMxMjAuMTc5IDU3LjQ4MDcgMTIwLjA4MiA1Ny4wOTM0IDExOS44OTQgNTYuNzU3NEMxMTkuNyA1Ni40MjcgMTE5LjQ0MyA1Ni4xNjUgMTE5LjExMiA1NS45NzE0QzExOC43ODIgNTUuNzgzNCAxMTguNDA1IDU1LjY4NjYgMTE3Ljk3MiA1NS42ODY2QzExNy41MzggNTUuNjg2NiAxMTcuMTU2IDU1Ljc4MzQgMTE2LjgyNSA1NS45NzE0QzExNi40OTUgNTYuMTU5MyAxMTYuMjMyIDU2LjQyMTMgMTE2LjA0NCA1Ni43NDZDMTE1Ljg1NiA1Ny4wNzYzIDExNS43NjUgNTcuNDUyMiAxMTUuNzY1IDU3Ljg4NTFDMTE1Ljc2NSA1OC4zMTc5IDExNS44NTYgNTguNjk5NSAxMTYuMDQ0IDU5LjAzNTZDMTE2LjIzMiA1OS4zNzE2IDExNi40ODkgNTkuNjM5MyAxMTYuODI1IDU5LjgzM0MxMTcuMTU2IDYwLjAyNjYgMTE3LjUzOCA2MC4xMjM0IDExNy45NzIgNjAuMTIzNFY2MC4xMjkxWiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNMTMxLjY3MSA2MS43NzUxQzEzMS4xOCA2MS43NzUxIDEzMC43MDEgNjEuNzA2OCAxMzAuMjM0IDYxLjU3NThDMTI5Ljc2NiA2MS40NDQ4IDEyOS4zMzggNjEuMjM0MSAxMjguOTUgNjAuOTU1QzEyOC41NjMgNjAuNjcwMiAxMjguMjQ5IDYwLjMwNTcgMTI3Ljk5OCA1OS44NTU3QzEyNy43NDcgNTkuNDA1OCAxMjcuNTkzIDU4Ljg3MDQgMTI3LjUzNiA1OC4yNDM5SDEyOS4xNzlDMTI5LjI1OCA1OC43NTA4IDEyOS40MjQgNTkuMTU1MiAxMjkuNjggNTkuNDQ1N0MxMjkuOTM3IDU5LjczNjEgMTMwLjIzOSA1OS45NDY5IDEzMC41OTkgNjAuMDc3OUMxMzAuOTU4IDYwLjIwMzIgMTMxLjMyOSA2MC4yNjU4IDEzMS43MDUgNjAuMjY1OEMxMzIuMDgxIDYwLjI2NTggMTMyLjQ0NyA2MC4yMDMyIDEzMi43NjYgNjAuMDgzNkMxMzMuMDggNTkuOTYzOSAxMzMuMzMxIDU5Ljc4MTcgMTMzLjUxMyA1OS41NDgyQzEzMy43MDEgNTkuMzE0NyAxMzMuNzkyIDU5LjAyOTkgMTMzLjc5MiA1OC42OTk1QzEzMy43OTIgNTguMzY5MiAxMzMuNzAxIDU4LjA5MDEgMTMzLjUxOSA1Ny44Mzk1QzEzMy4zMzYgNTcuNTg4OSAxMzIuOTY2IDU3LjQxOCAxMzIuNDA3IDU3LjMyMTJMMTMwLjU4NyA1Ni45ODUyQzEyOS43NzcgNTYuODMxNCAxMjkuMTMzIDU2LjQ5NTQgMTI4LjY2IDU1Ljk4ODVDMTI4LjE4NiA1NS40ODE2IDEyNy45NDcgNTQuODc3OCAxMjcuOTQ3IDU0LjE4M0MxMjcuOTQ3IDUzLjU0NTEgMTI4LjExMiA1My4wMDQgMTI4LjQzNyA1Mi41NTRDMTI4Ljc2MiA1Mi4xMDQxIDEyOS4yMDEgNTEuNzYyNCAxMjkuNzQzIDUxLjUxNzRDMTMwLjI4NSA1MS4yNzgyIDEzMC44ODQgNTEuMTU4NiAxMzEuNTQgNTEuMTU4NkMxMzIuMTk2IDUxLjE1ODYgMTMyLjg0IDUxLjI3ODIgMTMzLjM3NiA1MS41MTE4QzEzMy45MTggNTEuNzQ1MyAxMzQuMzU3IDUyLjA5ODQgMTM0LjY5OSA1Mi41NzY4QzEzNS4wNDEgNTMuMDQ5NiAxMzUuMjQ3IDUzLjY1OSAxMzUuMzE1IDU0LjQwNTFIMTMzLjYzOEMxMzMuNTcgNTMuOTY2NSAxMzMuNDMzIDUzLjYxOTEgMTMzLjIzNCA1My4zNjI4QzEzMy4wMzQgNTMuMTA2NSAxMzIuNzg5IDUyLjkyOTkgMTMyLjQ5OCA1Mi44MjE3QzEzMi4yMDcgNTIuNzEzNSAxMzEuODk5IDUyLjY2MjMgMTMxLjU2OCA1Mi42NjIzQzEzMS4yNjYgNTIuNjYyMyAxMzAuOTU4IDUyLjcxMzUgMTMwLjY1IDUyLjgxMDNDMTMwLjM0MiA1Mi45MDcyIDEzMC4wOTEgNTMuMDY2NiAxMjkuODkxIDUzLjI3NzRDMTI5LjY5OCA1My40OTM4IDEyOS41OTUgNTMuNzc4NiAxMjkuNTk1IDU0LjE0MzFDMTI5LjU5NSA1NC40Njc3IDEyOS43MTUgNTQuNzQ2OCAxMjkuOTQ4IDU0Ljk4MDNDMTMwLjE4MiA1NS4yMTM5IDEzMC41NDcgNTUuMzc5IDEzMS4wMzIgNTUuNDY0NUwxMzIuNzIgNTUuNzg5MUMxMzMuNTgxIDU1Ljk0MjkgMTM0LjI1NCA1Ni4yNTYxIDEzNC43MzQgNTYuNzExOEMxMzUuMjEzIDU3LjE3MzEgMTM1LjQ1MiA1Ny44MjI0IDEzNS40NTIgNTguNjU5N0MxMzUuNDUyIDU5LjE2NjYgMTM1LjM0NCA1OS42MTY1IDEzNS4xMjcgNjAuMDA5NUMxMzQuOTEgNjAuNDAyNSAxMzQuNjE5IDYwLjcyNzEgMTM0LjI1NCA2MC45ODM0QzEzMy44ODkgNjEuMjQ1NCAxMzMuNDc5IDYxLjQzOTEgMTMzLjAzNCA2MS41NzU4QzEzMi41ODkgNjEuNzEyNSAxMzIuMTMzIDYxLjc4MDggMTMxLjY1OSA2MS43ODA4TDEzMS42NzEgNjEuNzc1MVoiIGZpbGw9IiMyNjAwM0MiLz4KPHBhdGggZD0iTTE0MC4xNDYgNjEuNzc1MUMxMzkuNDIyIDYxLjc3NTEgMTM4Ljc2NiA2MS42MTU3IDEzOC4xODQgNjEuMjk2N0MxMzcuNjAyIDYwLjk3NzggMTM3LjE0IDYwLjUzMzUgMTM2Ljc5OCA1OS45NTI2QzEzNi40NTYgNTkuMzc3MyAxMzYuMjg1IDU4LjcxMDkgMTM2LjI4NSA1Ny45NTkxQzEzNi4yODUgNTcuMjA3MyAxMzYuNDU2IDU2LjUyOTUgMTM2Ljc5OCA1NS45NkMxMzcuMTQgNTUuMzkwNCAxMzcuNjA4IDU0Ljk0MDUgMTM4LjE5NSA1NC42MjcyQzEzOC43ODMgNTQuMzA4MyAxMzkuNDMzIDU0LjE0ODggMTQwLjE0NiA1NC4xNDg4QzE0MC44NTkgNTQuMTQ4OCAxNDEuNTM3IDU0LjMwODMgMTQyLjExNCA1NC42MjcyQzE0Mi42OSA1NC45NDYyIDE0My4xNTEgNTUuMzkwNCAxNDMuNDk0IDU1Ljk2QzE0My44MzYgNTYuNTI5NSAxNDQuMDA3IDU3LjIwMTYgMTQ0LjAwNyA1Ny45NTkxQzE0NC4wMDcgNTguNzE2NiAxNDMuODM2IDU5LjM3NzMgMTQzLjQ5NCA1OS45NTI2QzE0My4xNTEgNjAuNTI3OCAxNDIuNjkgNjAuOTc3OCAxNDIuMTA4IDYxLjI5NjdDMTQxLjUyNiA2MS42MTU3IDE0MC44NyA2MS43NzUxIDE0MC4xNDYgNjEuNzc1MVpNMTQwLjE0NiA2MC4yNDg3QzE0MC41MTcgNjAuMjQ4NyAxNDAuODU5IDYwLjE2MzMgMTQxLjE2NyA1OS45OTI0QzE0MS40NzUgNTkuODIxNiAxNDEuNzIgNTkuNTY1MyAxNDEuOTA4IDU5LjIyOTJDMTQyLjA5NiA1OC44OTMyIDE0Mi4xODggNTguNDcxNyAxNDIuMTg4IDU3Ljk1OTFDMTQyLjE4OCA1Ny40NDY1IDE0Mi4wOTYgNTcuMDI1MSAxNDEuOTA4IDU2LjY4OUMxNDEuNzIgNTYuMzUzIDE0MS40NzUgNTYuMDk2NyAxNDEuMTY3IDU1LjkyNThDMTQwLjg1OSA1NS43NTQ5IDE0MC41MTcgNTUuNjY5NSAxNDAuMTQ2IDU1LjY2OTVDMTM5Ljc3NSA1NS42Njk1IDEzOS40NDQgNTUuNzU0OSAxMzkuMTMxIDU1LjkyNThDMTM4LjgxNyA1Ni4wOTY3IDEzOC41NjYgNTYuMzUzIDEzOC4zODQgNTYuNjg5QzEzOC4xOTUgNTcuMDI1MSAxMzguMTA0IDU3LjQ0NjUgMTM4LjEwNCA1Ny45NTkxQzEzOC4xMDQgNTguNDcxNyAxMzguMTk1IDU4Ljg4NzUgMTM4LjM4NCA1OS4yMjkyQzEzOC41NzIgNTkuNTY1MyAxMzguODE3IDU5LjgyMTYgMTM5LjEyNSA1OS45OTI0QzEzOS40MzMgNjAuMTYzMyAxMzkuNzc1IDYwLjI0ODcgMTQwLjE0NiA2MC4yNDg3WiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNMTQ0LjkwOCA2MS41OTg1VjUxLjAzOUgxNDYuNjdWNjEuNTk4NUgxNDQuOTA4WiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNMTUwLjM5NSA2MS43NzUxQzE0OS41NzMgNjEuNzc1MSAxNDguOTE3IDYxLjQ5NiAxNDguNDMzIDYwLjkzMjJDMTQ3Ljk0OCA2MC4zNjgzIDE0Ny43MDMgNTkuNTQ4MSAxNDcuNzAzIDU4LjQ2MDNWNTQuMzI1M0gxNDkuNDQ4VjU4LjI4MzdDMTQ5LjQ0OCA1OC45Mzg3IDE0OS41NzMgNTkuNDM0MiAxNDkuODMgNTkuNzcwM0MxNTAuMDg3IDYwLjEwNjMgMTUwLjQ1MiA2MC4yNzcyIDE1MC45MzEgNjAuMjc3MkMxNTEuNDY3IDYwLjI3NzIgMTUxLjg5NSA2MC4wODkyIDE1Mi4yMDMgNTkuNzA3NkMxNTIuNTExIDU5LjMyNiAxNTIuNjY1IDU4Ljc4NDkgMTUyLjY2NSA1OC4wNzg3VjU0LjMyNTNIMTU0LjQyN1Y2MS41OTg1SDE1Mi42NjVWNjAuNDk5M0MxNTIuNDQ4IDYwLjg5OCAxNTIuMTUxIDYxLjIxMTIgMTUxLjc2OSA2MS40MzkxQzE1MS4zODcgNjEuNjY2OSAxNTAuOTI1IDYxLjc3NTEgMTUwLjM4OSA2MS43NzUxSDE1MC4zOTVaIiBmaWxsPSIjMjYwMDNDIi8+CjxwYXRoIGQ9Ik0xNTguNDgyIDYxLjU5ODZDMTU4LjAxNCA2MS41OTg2IDE1Ny42MTUgNjEuNTQxNiAxNTcuMjkgNjEuNDI3N0MxNTYuOTY1IDYxLjMxMzggMTU2LjcyIDYxLjEwMzEgMTU2LjU1NCA2MC43ODk4QzE1Ni4zODkgNjAuNDc2NiAxNTYuMzAzIDYwLjAyMDkgMTU2LjMwMyA1OS40Mjg2VjU1LjgwNjJIMTU1LjA1NFY1NC4zMjU0SDE1Ni4zMDNWNTIuNDE3NEgxNTguMDY2VjU0LjMyNTRIMTU5Ljk3NlY1NS44MDYySDE1OC4wNjZWNTkuMTk1MUMxNTguMDY2IDU5LjQ1NzEgMTU4LjA5NCA1OS42NTY0IDE1OC4xNDUgNTkuNzgxN0MxNTguMTk3IDU5LjkwNyAxNTguMjk0IDU5Ljk5MjQgMTU4LjQzMSA2MC4wMzhDMTU4LjU2NyA2MC4wODM2IDE1OC43NjcgNjAuMTA2MyAxNTkuMDM1IDYwLjEwNjNIMTU5LjkwMlY2MS42MDQzSDE1OC40NzZMMTU4LjQ4MiA2MS41OTg2WiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNMTYwLjUyNCA1My4wNzhWNTEuMjcyNUgxNjIuMzAzVjUzLjA3OEgxNjAuNTI0Wk0xNjAuNTI0IDYxLjU5ODZWNTQuMzI1M0gxNjIuMjg2VjYxLjU5ODZIMTYwLjUyNFoiIGZpbGw9IiMyNjAwM0MiLz4KPHBhdGggZD0iTTE2Ny4wMTQgNjEuNzc1MUMxNjYuMjkgNjEuNzc1MSAxNjUuNjM0IDYxLjYxNTcgMTY1LjA1MiA2MS4yOTY3QzE2NC40NyA2MC45Nzc4IDE2NC4wMDggNjAuNTMzNSAxNjMuNjY2IDU5Ljk1MjZDMTYzLjMyNCA1OS4zNzczIDE2My4xNTMgNTguNzEwOSAxNjMuMTUzIDU3Ljk1OTFDMTYzLjE1MyA1Ny4yMDczIDE2My4zMjQgNTYuNTI5NSAxNjMuNjY2IDU1Ljk2QzE2NC4wMDggNTUuMzkwNCAxNjQuNDc2IDU0Ljk0MDUgMTY1LjA2MyA1NC42MjcyQzE2NS42NTEgNTQuMzA4MyAxNjYuMzAxIDU0LjE0ODggMTY3LjAyIDU0LjE0ODhDMTY3LjczOCA1NC4xNDg4IDE2OC40MTEgNTQuMzA4MyAxNjguOTg3IDU0LjYyNzJDMTY5LjU2MyA1NC45NDYyIDE3MC4wMjUgNTUuMzkwNCAxNzAuMzY3IDU1Ljk2QzE3MC43MSA1Ni41Mjk1IDE3MC44ODEgNTcuMjAxNiAxNzAuODgxIDU3Ljk1OTFDMTcwLjg4MSA1OC43MTY2IDE3MC43MSA1OS4zNzczIDE3MC4zNjcgNTkuOTUyNkMxNzAuMDI1IDYwLjUyNzggMTY5LjU2MyA2MC45Nzc4IDE2OC45ODEgNjEuMjk2N0MxNjguNCA2MS42MTU3IDE2Ny43NDQgNjEuNzc1MSAxNjcuMDIgNjEuNzc1MUgxNjcuMDE0Wk0xNjcuMDE0IDYwLjI0ODdDMTY3LjM4NSA2MC4yNDg3IDE2Ny43MjcgNjAuMTYzMyAxNjguMDM1IDU5Ljk5MjRDMTY4LjM0MyA1OS44MjE2IDE2OC41ODggNTkuNTY1MyAxNjguNzc2IDU5LjIyOTJDMTY4Ljk2NCA1OC44OTMyIDE2OS4wNTYgNTguNDcxNyAxNjkuMDU2IDU3Ljk1OTFDMTY5LjA1NiA1Ny40NDY1IDE2OC45NjQgNTcuMDI1MSAxNjguNzc2IDU2LjY4OUMxNjguNTg4IDU2LjM1MyAxNjguMzQzIDU2LjA5NjcgMTY4LjAzNSA1NS45MjU4QzE2Ny43MjcgNTUuNzU0OSAxNjcuMzg1IDU1LjY2OTUgMTY3LjAxNCA1NS42Njk1QzE2Ni42NDMgNTUuNjY5NSAxNjYuMzEyIDU1Ljc1NDkgMTY1Ljk5OSA1NS45MjU4QzE2NS42ODUgNTYuMDk2NyAxNjUuNDM0IDU2LjM1MyAxNjUuMjUyIDU2LjY4OUMxNjUuMDYzIDU3LjAyNTEgMTY0Ljk3MiA1Ny40NDY1IDE2NC45NzIgNTcuOTU5MUMxNjQuOTcyIDU4LjQ3MTcgMTY1LjA2MyA1OC44ODc1IDE2NS4yNTIgNTkuMjI5MkMxNjUuNDQgNTkuNTY1MyAxNjUuNjg1IDU5LjgyMTYgMTY1Ljk5MyA1OS45OTI0QzE2Ni4zMDEgNjAuMTYzMyAxNjYuNjQzIDYwLjI0ODcgMTY3LjAxNCA2MC4yNDg3WiIgZmlsbD0iIzI2MDAzQyIvPgo8cGF0aCBkPSJNMTcxLjc4NyA2MS41OTg2VjU0LjMyNTRIMTczLjU1VjU1LjQ1MzFDMTczLjc5NSA1NS4wNTQ0IDE3NC4xMjYgNTQuNzM1NCAxNzQuNTQyIDU0LjUwMTlDMTc0Ljk1OSA1NC4yNjg0IDE3NS40MzIgNTQuMTQ4OCAxNzUuOTc0IDU0LjE0ODhDMTc2Ljg3NSA1NC4xNDg4IDE3Ny41NzYgNTQuNDI3OSAxNzguMDcyIDU0Ljk5MTdDMTc4LjU3NCA1NS41NTU2IDE3OC44MiA1Ni4zNzU4IDE3OC44MiA1Ny40NjM2VjYxLjU5ODZIMTc3LjA1N1Y1Ny42NDAyQzE3Ny4wNTcgNTYuOTg1MiAxNzYuOTIgNTYuNDg5NyAxNzYuNjUyIDU2LjE1MzZDMTc2LjM4NCA1NS44MTc2IDE3NS45NzQgNTUuNjQ2NyAxNzUuNDI2IDU1LjY0NjdDMTc0Ljg3OSA1NS42NDY3IDE3NC40NCA1NS44MzQ3IDE3NC4wOCA1Ni4yMTYzQzE3My43MjEgNTYuNTk3OSAxNzMuNTQ0IDU3LjEzOSAxNzMuNTQ0IDU3Ljg0NTJWNjEuNTk4NkgxNzEuNzgySDE3MS43ODdaIiBmaWxsPSIjMjYwMDNDIi8+CjxwYXRoIGQ9Ik0xODIuOTE1IDYxLjc3NTFDMTgxLjk3NCA2MS43NzUxIDE4MS4xOTggNjEuNTUzIDE4MC41NzYgNjEuMTE0NUMxNzkuOTYgNjAuNjc1OSAxNzkuNjA3IDYwLjA2NjUgMTc5LjUyMSA1OS4yOTc2SDE4MS4zMjlDMTgxLjM5NyA1OS42MzkzIDE4MS41OCA1OS45MTI3IDE4MS44NzcgNjAuMTEyQzE4Mi4xNzMgNjAuMzExNCAxODIuNTM4IDYwLjQxMzkgMTgyLjk3MiA2MC40MTM5QzE4My40MDUgNjAuNDEzOSAxODMuNzUzIDYwLjMyODUgMTgzLjk5MiA2MC4xNTc2QzE4NC4yMzIgNTkuOTg2NyAxODQuMzUyIDU5Ljc3NiAxODQuMzUyIDU5LjUxOTdDMTg0LjM1MiA1OS4zMTQ3IDE4NC4yNzIgNTkuMTU1MiAxODQuMTA3IDU5LjA0MTNDMTgzLjk0MSA1OC45Mjc0IDE4My42NTYgNTguODQxOSAxODMuMjQ1IDU4Ljc4NUMxODMuMDg2IDU4Ljc1NjUgMTgyLjg5NyA1OC43MjIzIDE4Mi42NjQgNTguNjg4MkMxODIuNDM1IDU4LjY1NCAxODIuMjM2IDU4LjYxOTggMTgyLjA3IDU4LjU3OTlDMTgxLjY4OCA1OC41MTE2IDE4MS4zMzUgNTguMzkyIDE4MC45OTggNTguMjIxMUMxODAuNjY3IDU4LjA1MDMgMTgwLjM5OSA1Ny44MTY3IDE4MC4yIDU3LjUyNjNDMTgwIDU3LjIzMDEgMTc5Ljg5OCA1Ni44NzEzIDE3OS44OTggNTYuNDM4NEMxNzkuODk4IDU1Ljc5NDggMTgwLjE0MyA1NS4yNTM3IDE4MC42MjggNTQuODA5NUMxODEuMTEyIDU0LjM2NTIgMTgxLjgwMiA1NC4xNDg4IDE4Mi43MDQgNTQuMTQ4OEMxODMuNjA1IDU0LjE0ODggMTg0LjMyMyA1NC4zNDgxIDE4NC44NjUgNTQuNzQxMUMxODUuNDA3IDU1LjEzNDEgMTg1LjcwOSA1NS43MTUxIDE4NS43ODkgNTYuNDc4M0gxODQuMDcyQzE4NC4wNDQgNTYuMTUzNiAxODMuOTAxIDU1LjkxNDQgMTgzLjYzOSA1NS43NjA2QzE4My4zNzcgNTUuNjA2OSAxODMuMDY5IDU1LjUyNzEgMTgyLjcwOSA1NS41MjcxQzE4Mi4zMTYgNTUuNTI3MSAxODIuMDEzIDU1LjYwMTIgMTgxLjc5NyA1NS43NTQ5QzE4MS41OCA1NS45MDg3IDE4MS40NzIgNTYuMDk2NyAxODEuNDcyIDU2LjMxODhDMTgxLjQ3MiA1Ni43MTc1IDE4MS44MDggNTYuOTc5NSAxODIuNDg3IDU3LjA5MzRDMTgyLjU4NCA1Ny4xMTA1IDE4Mi43MDkgNTcuMTMzMyAxODIuODYzIDU3LjE2MTdDMTgzLjAxNyA1Ny4xODQ1IDE4My4xNzEgNTcuMjEzIDE4My4zMjUgNTcuMjM1OEMxODMuNDc5IDU3LjI1ODYgMTgzLjYxNiA1Ny4yODE0IDE4My43MjQgNTcuMzA0MUMxODMuOTg3IDU3LjMzMjYgMTg0LjI1NSA1Ny4zODk2IDE4NC41MjMgNTcuNDgwN0MxODQuNzkxIDU3LjU2NjEgMTg1LjA0MiA1Ny42ODU3IDE4NS4yNjQgNTcuODM5NUMxODUuNDg3IDU3Ljk5MzMgMTg1LjY2OSA1OC4xODY5IDE4NS44IDU4LjQzMTlDMTg1LjkzMiA1OC42NzY4IDE4NiA1OC45ODQzIDE4NiA1OS4zNTQ1QzE4NiA1OS44MzMgMTg1Ljg4IDYwLjI1NDQgMTg1LjY0MSA2MC42MTMyQzE4NS40MDEgNjAuOTc3OCAxODUuMDUzIDYxLjI1NjggMTg0LjU5MSA2MS40NjE5QzE4NC4xMjkgNjEuNjY2OSAxODMuNTcgNjEuNzY5NCAxODIuOTE1IDYxLjc2OTRWNjEuNzc1MVoiIGZpbGw9IiMyNjAwM0MiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF82MjFfMTMwOSI+CjxyZWN0IHdpZHRoPSIxODYiIGhlaWdodD0iNjUiIGZpbGw9IndoaXRlIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg==" alt="">
+        <div class="logo-shine"></div>
+    </div>
+
+    <button id="toggle-ui-btn" class="toggle-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+    </button>
+
+    <div id="holo-panel" class="holo-panel">
+        <div class="holo-title">Control Interface</div>
+        
+        <div class="landscape-slider">
+            <div id="slider-indicator" class="slider-indicator"></div>
+            <div class="slider-option" data-value="small">Small</div>
+            <div class="slider-option active" data-value="medium">Medium</div>
+            <div class="slider-option" data-value="large">Large</div>
+        </div>
+
+        <div class="fte-row">
+            <div class="fte-col">
+                <div class="fte-label">Team Size (FTE)</div>
+                <input type="number" id="fte-input" class="fte-input" placeholder="e.g. 10">
+            </div>
+            <div class="fte-col">
+                <div class="fte-label">Budget</div>
+                <div class="budget-wrap">
+                    <span class="currency-prefix">$</span>
+                    <input type="text" id="budget-input" class="fte-input" placeholder="50,000">
+                    <span class="currency-suffix">USD</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="roi-panel" class="roi-panel">
+            <div class="roi-title">Projected Impact</div>
+            <div class="roi-grid">
+                <div class="roi-stat">
+                    <div id="roi-savings" class="roi-stat-value">$0</div>
+                    <div class="roi-stat-label">Savings</div>
+                </div>
+                <div class="roi-stat">
+                    <div id="roi-hires" class="roi-stat-value">0</div>
+                    <div class="roi-stat-label">Extra Hires</div>
+                </div>
+                <div class="roi-stat">
+                    <div id="roi-hours" class="roi-stat-value">0</div>
+                    <div class="roi-stat-label">Hours Saved</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="scanlines"></div>
+
+    <script>
+        /* ================================================================
+         * STICK FIGURES ON MOUNTAIN (Babylon.js Implementation)
+         * ================================================================ */
+        // Create stick figure texture via canvas to DataURL for Babylon SpriteManager
+        const figCanvas = document.createElement('canvas');
+        figCanvas.width = 32; figCanvas.height = 64;
+        const fCtx = figCanvas.getContext('2d');
+        fCtx.strokeStyle = '#ffffff'; fCtx.lineWidth = 3; fCtx.lineCap = 'round';
+        fCtx.beginPath(); fCtx.arc(16, 8, 5, 0, Math.PI * 2); fCtx.stroke(); // Head
+        fCtx.beginPath(); fCtx.moveTo(16, 13); fCtx.lineTo(16, 38); fCtx.stroke(); // Body
+        fCtx.beginPath(); fCtx.moveTo(6, 24); fCtx.lineTo(16, 20); fCtx.lineTo(26, 24); fCtx.stroke(); // Arms
+        fCtx.beginPath(); fCtx.moveTo(8, 56); fCtx.lineTo(16, 38); fCtx.lineTo(24, 56); fCtx.stroke(); // Legs
+        const figDataUrl = figCanvas.toDataURL();
+
+        // Smoke puff texture via canvas to DataURL
+        const smokeCanvas = document.createElement('canvas');
+        smokeCanvas.width = 16; smokeCanvas.height = 16;
+        const smCtx = smokeCanvas.getContext('2d');
+        smCtx.fillStyle = '#00f3ff';
+        [[3,2],[4,2],[3,3],[4,3],[5,3],[2,4],[3,4],[4,4],[5,4],[2,5],[3,5],[4,5],[5,5],[3,6],[4,6]].forEach(([gx,gy]) => smCtx.fillRect(gx * 2, gy * 2, 2, 2));
+        const smokeDataUrl = smokeCanvas.toDataURL();
+
+        // Global trackers for figures
+        let figManager, smokeManager;
+        const figSprites = [];
+        const smokePuffs = [];
+        window.fteTarget = 0;
+        let fadingOut = false;
+        let figWaveTime = 0;
+        let figWaveTimer = 0;
+        let figWaveInterval = 4;
+
+        // Sample valid positions using Raycasts onto the babylon mountain
+        function sampleMountainPositions(count, scene) {
+            const positions = [];
+            let attempts = 0;
+            while (positions.length < count && attempts < count * 20) {
+                attempts++;
+                const radius = 30; // Max radius on mountain
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.sqrt(Math.random()) * radius;
+                const x = Math.cos(angle) * r;
+                const z = Math.sin(angle) * r;
+
+                if (!window.babylonMountain) continue;
+
+                const ray = new BABYLON.Ray(new BABYLON.Vector3(x, 100, z), new BABYLON.Vector3(0, -1, 0), 200);
+                const pick = scene.pickWithRay(ray, (m) => m === window.babylonMountain);
+
+                // Ensure it hit the mountain and is slightly elevated above the floor
+                if (pick.hit && pick.pickedPoint.y > 1.0) {
+                    positions.push(pick.pickedPoint.clone());
+                }
+            }
+            return positions;
+        }
+
+        function spawnSmokePuff(pos) {
+            if (!smokeManager) return;
+            const count = 4 + Math.floor(Math.random() * 4);
+            for (let i = 0; i < count; i++) {
+                const s = new BABYLON.Sprite("smoke", smokeManager);
+                s.position.copyFrom(pos);
+                s.position.x += (Math.random() - 0.5) * 0.6;
+                s.position.y += Math.random() * 0.4;
+                s.position.z += (Math.random() - 0.5) * 0.6;
+                s.size = 0.3 + Math.random() * 0.4;
+                s.color = new BABYLON.Color4(1, 1, 1, 0.9);
+                smokePuffs.push({
+                    sprite: s,
+                    vx: (Math.random() - 0.5) * 0.05,
+                    vy: 0.02 + Math.random() * 0.03,
+                    life: 1.0,
+                    decay: 0.02 + Math.random() * 0.02
+                });
+            }
+        }
+
+        function spawnFigure(pos) {
+            if (!figManager) return;
+            const s = new BABYLON.Sprite("fig", figManager);
+            s.position.copyFrom(pos);
+            s.position.y += 0.8; // Stand on surface
+            s.width = 0.8;
+            s.height = 1.6;
+            s.color = new BABYLON.Color4(0, 0.95, 1, 0); // Transparent cyan
+            spawnSmokePuff(s.position);
+
+            const dist = Math.sqrt(pos.x * pos.x + pos.z * pos.z);
+            figSprites.push({
+                sprite: s,
+                targetOpacity: 1.0,
+                currentOpacity: 0,
+                blinkTime: 0,
+                blinkPhase: 0,
+                dist: dist
+            });
+        }
+
+        function removeFigure(index) {
+            const fig = figSprites[index];
+            spawnSmokePuff(fig.sprite.position);
+            fig.sprite.dispose();
+            figSprites.splice(index, 1);
+        }
+
+        function updateFigures(scene) {
+            if (fadingOut) return; 
+
+            // Power curve logic translated
+            const renderCount = window.fteTarget <= 0 ? 0 : Math.min(Math.round(Math.pow(window.fteTarget, 1.4)), 600);
+            const current = figSprites.length;
+            const spawnRate = Math.max(1, Math.floor(Math.abs(renderCount - current) / 10));
+
+            if (current < renderCount) {
+                const pts = sampleMountainPositions(Math.min(spawnRate, renderCount - current), scene);
+                pts.forEach(p => spawnFigure(p));
+            } else if (current > renderCount) {
+                for(let i = 0; i < Math.min(spawnRate, current - renderCount); i++){
+                    removeFigure(figSprites.length - 1);
+                }
+            }
+        }
+
+        function updateFigureAnimation(scene) {
+            figWaveTimer += 0.016;
+            if (figWaveTimer >= figWaveInterval) {
+                figWaveTimer = 0;
+                figWaveTime = 0;
+                figWaveInterval = 4 + Math.random() * 4;
+            }
+            figWaveTime += 0.016;
+            const waveFront = figWaveTime * 20; 
+            const waveWidth = 8;
+
+            for (let i = figSprites.length - 1; i >= 0; i--) {
+                const f = figSprites[i];
+                const diff = f.targetOpacity - f.currentOpacity;
+                f.currentOpacity += diff * 0.08;
+                
+                // Concentric wave blink
+                if (!fadingOut && waveFront >= f.dist && waveFront < f.dist + waveWidth && f.blinkPhase === 0) {
+                    f.blinkPhase = 1;
+                    f.blinkTime = 0;
+                }
+                if (f.blinkPhase === 1) {
+                    f.blinkTime += 0.16; // 100ms fade in
+                    if (f.blinkTime >= 1.0) { f.blinkTime = 1.0; f.blinkPhase = 2; }
+                }
+                if (f.blinkPhase === 2) {
+                    f.blinkTime -= 0.005; // 3s fade out
+                    if (f.blinkTime <= 0) { f.blinkTime = 0; f.blinkPhase = 0; }
+                }
+
+                // Apply color mix
+                const t = f.blinkTime;
+                f.sprite.color.r = t;
+                f.sprite.color.g = 0.95 + t * 0.05;
+                f.sprite.color.b = 1;
+                f.sprite.color.a = f.currentOpacity;
+
+                if (fadingOut && f.currentOpacity < 0.01) {
+                    f.sprite.dispose();
+                    figSprites.splice(i, 1);
+                }
+            }
+
+            if (fadingOut && figSprites.length === 0) fadingOut = false;
+
+            for (let i = smokePuffs.length - 1; i >= 0; i--) {
+                const p = smokePuffs[i];
+                p.life -= p.decay;
+                p.sprite.position.x += p.vx;
+                p.sprite.position.y += p.vy;
+                p.sprite.color.a = Math.max(0, p.life * 0.8);
+                const grow = 0.3 + (1 - p.life) * 0.5;
+                p.sprite.size = grow;
+                if (p.life <= 0) {
+                    p.sprite.dispose();
+                    smokePuffs.splice(i, 1);
+                }
+            }
+
+            if (!fadingOut) updateFigures(scene);
+        }
+
+        function startFadeOut() {
+            fadingOut = true;
+            figSprites.forEach(f => f.targetOpacity = 0);
+        }
+
+
+        /* ================================================================
+         * 2D BACKGROUND EFFECTS (Stars, Meteors, Birds)
+         * ================================================================ */
+         let stagModel = null;
+         let angle = 0;
+
+        const starsCanvas = document.getElementById('stars-canvas');
+        const ctx2d = starsCanvas.getContext('2d');
+        starsCanvas.width = window.innerWidth;
+        starsCanvas.height = window.innerHeight;
+
+        const birdsCanvas = document.getElementById('birds-canvas');
+        const birdsCtx = birdsCanvas.getContext('2d');
+        birdsCanvas.width = window.innerWidth;
+        birdsCanvas.height = window.innerHeight;
+
+        const stars = [];
+        for (let i = 0; i < 200; i++) {
+            stars.push({
+                x: Math.random() * starsCanvas.width,
+                y: Math.random() * starsCanvas.height * 0.65,
+                size: Math.random() < 0.1 ? 2 + Math.random() * 2 : 1 + Math.random(),
+                brightness: 0.3 + Math.random() * 0.7,
+                twinkleSpeed: 0.5 + Math.random() * 3
+            });
+        }
+
+        const meteors = [];
+        function spawnMeteor() {
+            meteors.push({
+                x: Math.random() * starsCanvas.width,
+                y: Math.random() * starsCanvas.height * 0.3,
+                vx: 4 + Math.random() * 6,
+                vy: 2 + Math.random() * 3,
+                life: 1.0, length: 30 + Math.random() * 50, size: 1 + Math.random()
+            });
+        }
+
+        const birds = [];
+        function spawnBird() {
+            const dir = Math.random() > 0.5 ? 1 : -1;
+            const speedFactor = 0.85 + Math.random() * 0.30;
+            birds.push({
+                x: dir > 0 ? -30 : starsCanvas.width + 30,
+                y: 30 + Math.random() * starsCanvas.height * 0.25,
+                vx: dir * (0.4 + Math.random() * 0.6) * speedFactor,
+                wingPhase: Math.random() * Math.PI * 2,
+                wingSpeed: (1.2 + Math.random() * 1.5) * speedFactor,
+                scale: 2 + Math.random() * 3
+            });
+        }
+
+        let stars2dTime = 0;
+        function drawStarsLayer() {
+            stars2dTime += 0.016;
+            ctx2d.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
+
+            stars.forEach(s => {
+                const flicker = 0.5 + 0.5 * Math.sin(stars2dTime * s.twinkleSpeed + s.x);
+                const alpha = s.brightness * flicker;
+                ctx2d.fillStyle = `rgba(180, 220, 255, ${alpha})`;
+                ctx2d.fillRect(Math.floor(s.x), Math.floor(s.y), Math.ceil(s.size), Math.ceil(s.size));
+            });
+
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                const m = meteors[i];
+                m.x += m.vx; m.y += m.vy; m.life -= 0.015;
+                if (m.life <= 0) { meteors.splice(i, 1); continue; }
+                const grad = ctx2d.createLinearGradient(m.x, m.y, m.x - m.vx * m.length / 6, m.y - m.vy * m.length / 6);
+                grad.addColorStop(0, `rgba(180, 230, 255, ${m.life})`);
+                grad.addColorStop(1, `rgba(80, 160, 255, 0)`);
+                ctx2d.strokeStyle = grad; ctx2d.lineWidth = m.size;
+                ctx2d.beginPath(); ctx2d.moveTo(m.x, m.y); ctx2d.lineTo(m.x - m.vx * m.length / 6, m.y - m.vy * m.length / 6); ctx2d.stroke();
+                ctx2d.fillStyle = `rgba(220, 240, 255, ${m.life})`;
+                ctx2d.fillRect(Math.floor(m.x) - 1, Math.floor(m.y) - 1, 3, 3);
+            }
+
+            if (Math.random() < 0.005) spawnMeteor();
+            if (Math.random() < 0.0005) spawnBird();
+        }
+
+        function drawBirdsLayer() {
+            birdsCtx.clearRect(0, 0, birdsCanvas.width, birdsCanvas.height);
+            for (let i = birds.length - 1; i >= 0; i--) {
+                const b = birds[i];
+                b.x += b.vx; b.wingPhase += b.wingSpeed * 0.016;
+                if (b.x < -50 || b.x > birdsCanvas.width + 50) { birds.splice(i, 1); continue; }
+                const wingY = Math.sin(b.wingPhase) * b.scale * 1.5; const px = Math.floor(b.scale);
+                birdsCtx.fillStyle = 'rgba(0, 243, 255, 0.85)'; birdsCtx.fillRect(Math.floor(b.x), Math.floor(b.y), px, px);
+                birdsCtx.fillRect(Math.floor(b.x) - px * 2, Math.floor(b.y + wingY), px, px); birdsCtx.fillRect(Math.floor(b.x) - px, Math.floor(b.y + wingY * 0.5), px, px);
+                birdsCtx.fillRect(Math.floor(b.x) + px * 2, Math.floor(b.y + wingY), px, px); birdsCtx.fillRect(Math.floor(b.x) + px, Math.floor(b.y + wingY * 0.5), px, px);
+            }
+        }
+
+        /* ================================================================
+         * BABYLON.JS MOUNTAIN ENGINE
+         * ================================================================ */
+        const renderCanvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(renderCanvas, true, { preserveDrawingBuffer: true, stencil: true, alpha: true });
+
+        window.babylonMountain = null;
+        window.targetMountainScaleY = 1.0;
+
+        const createScene = function () {
+            const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+
+            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.15, 75, new BABYLON.Vector3(0, 7, 0), scene);
+
+            // Re-attach control so we can orbit, but strictly lock zooming and panning
+            camera.attachControl(renderCanvas, true);
+
+            // LOCK ZOOM (Scroll)
+            camera.lowerRadiusLimit = 75;
+            camera.upperRadiusLimit = 75;
+
+            // LOCK PANNING (Right click / Two finger drag)
+            camera.panningSensibility = 0;
+
+            const leftLight = new BABYLON.DirectionalLight("leftLight", new BABYLON.Vector3(1, -0.3, 0.5), scene);
+            leftLight.diffuse = new BABYLON.Color3(0.1, 0.8, 0.9);
+            leftLight.intensity = 1.6;
+
+            const rightLight = new BABYLON.DirectionalLight("rightLight", new BABYLON.Vector3(-1, -0.3, 0.5), scene);
+            rightLight.diffuse = new BABYLON.Color3(0.02, 0.08, 0.25);
+            rightLight.intensity = 1.8;
+
+            const ambient = new BABYLON.HemisphericLight("ambient", new BABYLON.Vector3(0, 1, 0), scene);
+            ambient.diffuse = new BABYLON.Color3(0.05, 0.1, 0.2);
+            ambient.intensity = 0.3;
+
+            // Initialize Sprite Managers for figures and smoke
+            figManager = new BABYLON.SpriteManager("figManager", figDataUrl, 1000, {width: 32, height: 64}, scene);
+            smokeManager = new BABYLON.SpriteManager("smokeManager", smokeDataUrl, 3000, {width: 16, height: 16}, scene);
+
+            BABYLON.SceneLoader.ImportMesh("", "./", "stag_test.glb", scene, (meshes, ps, skel, anims) => {
+                stagModel = meshes[0];
+                stagModel.scaling = new BABYLON.Vector3(0.7, 0.7, 0.7);
+                if (anims[4]) anims[4].play(true);
+            });
+
+            // Shared material
+            const mountainMat = new BABYLON.StandardMaterial("mountainMat", scene);
+            mountainMat.specularColor = new BABYLON.Color3(0, 0, 0);
+            mountainMat.diffuseColor = new BABYLON.Color3(0.65, 0.65, 0.65);
+                
+            // Creates the seamless transition between the mountain base and the grid floor
+            const infiniteGridFloor = BABYLON.MeshBuilder.CreateGround("infiniteGridFloor", { width: 500, height: 500 }, scene);
+            infiniteGridFloor.position.y = -0.1;
+
+            const gridMat = new BABYLON.GridMaterial("gridMat", scene);
+            gridMat.mainColor = new BABYLON.Color3(0, 0, 0);
+            gridMat.lineColor = new BABYLON.Color3(0, 1, 1);
+            gridMat.majorUnitFrequency = 10;
+            gridMat.minorUnitVisibility = 0.5;
+            gridMat.opacity = 0.9;
+            gridMat.backFaceCulling = false;
+
+            infiniteGridFloor.material = gridMat;
+
+            // Mountain
+            const size = 70;
+            const subdivisions = 45;
+            const mountain = BABYLON.MeshBuilder.CreateGround("mountain", { width: size, height: size, subdivisions: subdivisions }, scene);
+            window.babylonMountain = mountain;
+
+            const positions = mountain.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+            const maxDist = size / 2;
+
+            for (let i = 0; i < positions.length; i += 3) {
+                const x = positions[i];
+                const z = positions[i + 2];
+                const distance = Math.sqrt(x * x + z * z);
+                let y = 0;
+
+                if (distance < maxDist) {
+                    let normalizedDist = 1.0 - (distance / maxDist);
+                    y = Math.pow(normalizedDist, 2.5) * 28;
+
+                    let macroNoise = Math.sin(x * 0.2) * Math.cos(z * 0.2) * 5.0;
+                    let sharpRidges = Math.abs(Math.sin(x * 0.4 + z * 0.3)) * 3.5;
+                    let detailNoise = (Math.sin(x * 0.8 - z * 0.7) + Math.cos(x * 0.7 + z * 0.8)) * 1.5;
+
+                    y += (macroNoise + sharpRidges + detailNoise) * Math.pow(normalizedDist, 1.2);
+
+                    let peakDist = Math.sqrt((x - 1.5)*(x - 1.5) + (z + 1.0)*(z + 1.0));
+                    let peakInfluence = Math.max(0, 1.0 - (peakDist / 12));
+                    y += Math.pow(peakInfluence, 2.0) * 6;
+                }
+                y = Math.round(Math.max(0, y) * 1.0) / 1.0;
+                positions[i + 1] = y;
+            }
+
+            mountain.setVerticesData(BABYLON.VertexBuffer.PositionKind, positions);
+            mountain.convertToFlatShadedMesh();
+            mountain.material = mountainMat;
+
+            // Neon Edges
+            mountain.enableEdgesRendering(0.94);
+            mountain.edgesWidth = 16.0;
+            mountain.edgesColor = new BABYLON.Color4(0, 1.0, 1.0, 1.0);
+
+            // Extended horizon neon line
+            const basePoints = [
+                new BABYLON.Vector3(-250, 0.05, 0),
+                new BABYLON.Vector3(250, 0.05, 0)
+            ];
+            const baseLine = BABYLON.MeshBuilder.CreateLines("baseLine", { points: basePoints }, scene);
+            baseLine.color = new BABYLON.Color3(0, 1.0, 1.0);
+
+            for(let i=1; i<=3; i++) {
+                let thickLine = baseLine.clone("baseLineThick" + i);
+                thickLine.position.z += i * 0.08;
+                let thickLine2 = baseLine.clone("baseLineThick" + i);
+                thickLine2.position.z -= i * 0.08;
+            }
+
+            // Post-Processing
+            const glowLayer = new BABYLON.GlowLayer("glowLayer", scene);
+            glowLayer.intensity = 1.2;
+
+            const pipeline = new BABYLON.DefaultRenderingPipeline("pipeline", true, scene, [camera]);
+            pipeline.bloomEnabled = true;
+            pipeline.bloomThreshold = 0.8;
+            pipeline.bloomWeight = 1.2;
+            pipeline.bloomKernel = 64;
+
+            return scene;
+        };
+
+        const scene = createScene();
+
+        engine.runRenderLoop(function () {
+            drawStarsLayer();
+            drawBirdsLayer();
+
+            if (window.babylonMountain) {
+                window.babylonMountain.scaling.y += (window.targetMountainScaleY - window.babylonMountain.scaling.y) * 0.05;
+            }
+
+            // Run the stick figure rendering/animation
+            updateFigureAnimation(scene);
+
+            if (stagModel && window.babylonMountain) {
+                angle += 0.009; // Fast run speed
+                const radius = 18;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+
+                // --- THE RAYCAST METHOD (FIXES SLOPE ERROR) ---
+                const ray = new BABYLON.Ray(new BABYLON.Vector3(x, 50, z), new BABYLON.Vector3(0, -1, 0), 100);
+                const pick = scene.pickWithRay(ray, (m) => m === window.babylonMountain);
+
+                if (pick.hit) {
+                    stagModel.position.set(x, pick.pickedPoint.y, z);
+
+                    // Look ahead logic
+                    const nextX = Math.cos(angle + 0.05) * radius;
+                    const nextZ = Math.sin(angle + 0.05) * radius;
+                    const nextRay = new BABYLON.Ray(new BABYLON.Vector3(nextX, 50, nextZ), new BABYLON.Vector3(0, -1, 0), 100);
+                    const nextPick = scene.pickWithRay(nextRay, (m) => m === window.babylonMountain);
+
+                    if (nextPick.hit) {
+                        stagModel.lookAt(nextPick.pickedPoint);
+                    }
+                }
+            }
+
+            scene.render();
+        });
+
+        window.addEventListener("resize", function () {
+            engine.resize();
+            starsCanvas.width = window.innerWidth;
+            starsCanvas.height = window.innerHeight;
+            birdsCanvas.width = window.innerWidth;
+            birdsCanvas.height = window.innerHeight;
+            stars.forEach(s => {
+                s.x = Math.random() * starsCanvas.width;
+                s.y = Math.random() * starsCanvas.height * 0.65;
+            });
+        });
+
+        /* ================================================================
+         * UI LOGIC (Toggle, FTE, ROI, Landscape Selector)
+         * ================================================================ */
+
+        const toggleBtn = document.getElementById('toggle-ui-btn');
+        const holoPanel = document.getElementById('holo-panel');
+
+        toggleBtn.addEventListener('click', () => {
+            holoPanel.classList.toggle('visible');
+        });
+
+        const sliderOptions = document.querySelectorAll('.slider-option');
+        const sliderIndicator = document.getElementById('slider-indicator');
+        let selectedLandscape = 'medium';
+
+        function selectLandscape(value) {
+            if (selectedLandscape === value) return;
+            selectedLandscape = value;
+            sliderOptions.forEach(opt => {
+                opt.classList.toggle('active', opt.dataset.value === value);
+            });
+            const positions = { small: '2px', medium: 'calc(33.333% + 2px)', large: 'calc(66.667% + 2px)' };
+            sliderIndicator.style.left = positions[value];
+
+            // Hook the Babylon mountain scale
+            if(value === 'small') window.targetMountainScaleY = 0.4;
+            if(value === 'medium') window.targetMountainScaleY = 1.0;
+            if(value === 'large') window.targetMountainScaleY = 1.6;
+
+            // Fade out figures when mountain changes shape so they don't float!
+            startFadeOut(); 
+        }
+
+        sliderOptions.forEach(opt => {
+            opt.addEventListener('click', () => selectLandscape(opt.dataset.value));
+        });
+
+        // ROI Math Logic
+        const fteInput = document.getElementById('fte-input');
+        const budgetInput = document.getElementById('budget-input');
+        const roiPanel = document.getElementById('roi-panel');
+        const roiSavings = document.getElementById('roi-savings');
+        const roiHires = document.getElementById('roi-hires');
+        const roiHours = document.getElementById('roi-hours');
+        let roiVisible = false;
+        let tronLinesAdded = false;
+
+        function formatCurrency(n) {
+            if (n >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'M';
+            if (n >= 1000) return '$' + (n / 1000).toFixed(0) + 'K';
+            return '$' + n.toFixed(0);
+        }
+
+        function addTronLines() {
+            if (tronLinesAdded) return;
+            tronLinesAdded = true;
+            const lines = [];
+            const hPositions = [10, 20, 33, 45, 55, 66, 78, 90];
+            const vPositions = [8, 18, 28, 38, 50, 62, 72, 82, 92];
+            hPositions.forEach((pos, i) => {
+                const el = document.createElement('div');
+                el.className = 'tron-line horizontal';
+                el.style.top = pos + '%';
+                el.style.animationDelay = (i * 0.06) + 's';
+                roiPanel.appendChild(el);
+                lines.push(el);
+            });
+            vPositions.forEach((pos, i) => {
+                const el = document.createElement('div');
+                el.className = 'tron-line vertical';
+                el.style.left = pos + '%';
+                el.style.animationDelay = (i * 0.06 + 0.15) + 's';
+                roiPanel.appendChild(el);
+                lines.push(el);
+            });
+            setTimeout(() => {
+                lines.forEach((el, i) => {
+                    setTimeout(() => el.classList.add('fade-out'), i * 40);
+                });
+                setTimeout(() => {
+                    lines.forEach(el => el.remove());
+                    tronLinesAdded = false;
+                }, lines.length * 40 + 1400);
+            }, 2000);
+        }
+
+        function parseBudget(str) {
+            return parseFloat(String(str).replace(/[^0-9.]/g, '')) || 0;
+        }
+
+        function formatBudgetDisplay(val) {
+            const num = Math.min(Math.max(0, Math.round(val)), 300000);
+            return num.toLocaleString('en-US');
+        }
+
+        const glitchTimers = new Map();
+        function glitchTo(el, finalText) {
+            if (glitchTimers.has(el)) {
+                clearInterval(glitchTimers.get(el).iv);
+                clearTimeout(glitchTimers.get(el).to);
+            }
+            if (el.textContent === finalText) return;
+            el.classList.remove('glitch-settle');
+            el.classList.add('glitching');
+            const chars = finalText.split('');
+            const steps = 12;
+            let step = 0;
+            const iv = setInterval(() => {
+                step++;
+                const locked = Math.floor((step / steps) * chars.length);
+                let scrambled = '';
+                for (let i = 0; i < chars.length; i++) {
+                    if (i < locked) {
+                        scrambled += chars[i];
+                    } else if (/[0-9]/.test(chars[i])) {
+                        scrambled += Math.floor(Math.random() * 10);
+                    } else {
+                        scrambled += chars[i];
+                    }
+                }
+                el.textContent = scrambled;
+                if (step >= steps) {
+                    clearInterval(iv);
+                    el.textContent = finalText;
+                    el.classList.remove('glitching');
+                    el.classList.add('glitch-settle');
+                    glitchTimers.delete(el);
+                }
+            }, 52);
+            const to = setTimeout(() => {}, 0);
+            glitchTimers.set(el, { iv, to });
+        }
+
+        function updateROI() {
+            const fte = Math.min(Math.max(0, parseInt(fteInput.value, 10) || 0), 100);
+            const budget = Math.min(Math.max(0, parseBudget(budgetInput.value)), 300000);
+
+            window.fteTarget = fte; // Trigger figure spawning
+
+            if (fte > 0 && budget > 0) {
+                const savingsPerFTE = budget * 0.70;
+                const totalSavings = savingsPerFTE * fte;
+                const additionalHires = budget > 0 ? Math.floor(totalSavings / budget) : 0;
+                const additionalHours = additionalHires * 174;
+
+                glitchTo(roiSavings, formatCurrency(totalSavings));
+                glitchTo(roiHires, additionalHires + '+');
+                glitchTo(roiHours, additionalHours.toLocaleString() + '+');
+
+                if (!roiVisible) {
+                    roiVisible = true;
+                    roiPanel.classList.add('visible');
+                    addTronLines();
+                }
+            } else {
+                if (roiVisible) {
+                    roiVisible = false;
+                    roiPanel.classList.remove('visible');
+                }
+            }
+        }
+
+        fteInput.addEventListener('input', updateROI);
+        fteInput.addEventListener('blur', () => {
+            let val = parseInt(fteInput.value, 10);
+            if (isNaN(val) || val < 0) val = 0;
+            if (val > 100) val = 100;
+            fteInput.value = val || '';
+            updateROI();
+        });
+
+        budgetInput.addEventListener('input', () => {
+            let raw = parseBudget(budgetInput.value);
+            if (raw > 300000) raw = 300000;
+            const caret = budgetInput.selectionStart;
+            const oldLen = budgetInput.value.length;
+            budgetInput.value = formatBudgetDisplay(raw);
+            const newLen = budgetInput.value.length;
+            const newCaret = Math.max(0, caret + (newLen - oldLen));
+            budgetInput.setSelectionRange(newCaret, newCaret);
+            updateROI();
+        });
+
+        budgetInput.addEventListener('blur', () => {
+            let raw = parseBudget(budgetInput.value);
+            if (isNaN(raw) || raw < 0) raw = 0;
+            if (raw > 300000) raw = 300000;
+            budgetInput.value = raw > 0 ? formatBudgetDisplay(raw) : '';
+            updateROI();
+        });
+/* ================================================================
+         * AIRPORT FLIP-BOARD ANIMATION
+         * ================================================================ */
+        const flipWords = [
+            'PENTESTING', 
+            'DEVELOPMENT', 
+            'ANALYTICS', 
+            'SUPPORT', 
+            'ENGINEERING', 
+            'MAINTENANCE', 
+            'MONITORING'
+        ];
+
+        // Synthwave color palette for the flip-board
+        const flipColors = [
+            { hex: '#00f3ff', rgb: '0, 243, 255' },   // Cyan
+            { hex: '#ff00ff', rgb: '255, 0, 255' },   // Magenta
+            { hex: '#ffff00', rgb: '255, 255, 0' },   // Yellow
+            { hex: '#33ff33', rgb: '51, 255, 51' },   // Neon Green
+            { hex: '#ff3366', rgb: '255, 51, 102' },  // Neon Pink
+            { hex: '#b026ff', rgb: '176, 38, 255' }   // Purple
+        ];
+        
+        const flipBoardEl = document.getElementById('flip-board');
+        let currentWordIndex = 0;
+        let currentColorIndex = 1; // Starts as magenta in your CSS
+
+        // The character set for the mechanical flip
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+        function airportFlipTo(el, newWord, colorObj) {
+            const targetText = '[ ' + newWord + ' ]';
+            
+            // Apply the new colors to the text, text-shadow, border, and box-shadow
+            el.style.color = colorObj.hex;
+            el.style.textShadow = `0 0 12px rgba(${colorObj.rgb}, 0.8)`;
+            el.style.borderColor = `rgba(${colorObj.rgb}, 0.5)`;
+            el.style.boxShadow = `inset 0 0 10px rgba(${colorObj.rgb}, 0.2)`;
+
+            // Clear any existing animation on this element
+            if (el.flipInterval) clearInterval(el.flipInterval);
+
+            let iterations = 0;
+            // The further right a letter is, the longer it takes to lock in
+            const maxIterations = targetText.length * 2 + 10; 
+
+            el.flipInterval = setInterval(() => {
+                let output = '';
+                
+                for (let i = 0; i < targetText.length; i++) {
+                    const targetChar = targetText[i];
+                    
+                    // Keep brackets and spaces static
+                    if (targetChar === '[' || targetChar === ']' || targetChar === ' ') {
+                        output += targetChar;
+                        continue;
+                    }
+
+                    // Lock letters in from left to right as iterations increase
+                    if (iterations > i * 1.5) {
+                        output += targetChar;
+                    } else {
+                        // Rapidly cycle through random letters for the "flapping" effect
+                        output += letters[Math.floor(Math.random() * letters.length)];
+                    }
+                }
+                
+                el.innerText = output;
+                iterations++;
+
+                // Stop the animation once all letters are locked
+                if (iterations >= maxIterations) {
+                    clearInterval(el.flipInterval);
+                    el.innerText = targetText;
+                }
+            }, 35); // 35ms per tick gives it a fast, mechanical flutter speed
+        }
+
+        // Trigger the flip board every 4 seconds
+        setInterval(() => {
+            if (!flipBoardEl) return;
+            
+            // Pick a random word, preventing back-to-back duplicates
+            let nextIndex;
+            do {
+                nextIndex = Math.floor(Math.random() * flipWords.length);
+            } while (nextIndex === currentWordIndex);
+            currentWordIndex = nextIndex;
+
+            // Pick a random color, preventing back-to-back duplicates
+            let nextColor;
+            do {
+                nextColor = Math.floor(Math.random() * flipColors.length);
+            } while (nextColor === currentColorIndex);
+            currentColorIndex = nextColor;
+            
+            // Fire the mechanical flip animation with the new color
+            airportFlipTo(flipBoardEl, flipWords[currentWordIndex], flipColors[currentColorIndex]);
+            
+        }, 4000);
+
+    </script>
+</body>
+</html>
