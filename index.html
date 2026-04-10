@@ -339,7 +339,7 @@
 <div class="hero-text-container">
         <h1 class="hero-headline">Services that break down less generate more revenue</h1>
         <p class="hero-subheadline">
-            That's why IBEX provides humans in the AI loop for<br>
+            That's why IBEX provides <span style="font-weight: bold !important; font-size: 20px !important;">humans</span> in the AI loop for<br>
             <span class="flip-board" id="flip-board">[ PENTESTING ]</span>
         </p>
     </div>
@@ -405,6 +405,16 @@
     <div class="scanlines"></div>
 
     <script>
+
+
+        // Timing and State Variables for the Stag
+let isStagRunning = true;
+let stagTimer = 0;
+let runDuration = 4000;   // 4 seconds of running
+let pauseDuration = 2000; // 2 seconds of resting
+let stagAnims = [];       // We will store the animations here
+let idleAnimIndex = 0;    // Change '0' to whatever your idle/stop animation is!
+
         /* ================================================================
          * STICK FIGURES ON MOUNTAIN (Babylon.js Implementation)
          * ================================================================ */
@@ -704,17 +714,27 @@
             const scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
 
-            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.15, 75, new BABYLON.Vector3(0, 7, 0), scene);
+       // 1. Define the angle
+const cameraAngle = Math.PI / 2.5; 
 
-            // Re-attach control so we can orbit, but strictly lock zooming and panning
-            camera.attachControl(renderCanvas, true);
+// 2. Create camera
+const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, cameraAngle, 75, new BABYLON.Vector3(0, 7, 0), scene);
 
-            // LOCK ZOOM (Scroll)
-            camera.lowerRadiusLimit = 75;
-            camera.upperRadiusLimit = 75;
+// 3. Attach control (Make sure "renderCanvas" is the correct variable name!)
+camera.attachControl(renderCanvas, true);
 
-            // LOCK PANNING (Right click / Two finger drag)
-            camera.panningSensibility = 0;
+// 4. Lock Zoom and Pan
+camera.lowerRadiusLimit = 75;
+camera.upperRadiusLimit = 75;
+camera.panningSensibility = 0;
+
+// 5. Lock Beta (Vertical) with a tiny 0.001 tolerance to prevent engine freezing
+camera.lowerBetaLimit = cameraAngle - 0.001;
+camera.upperBetaLimit = cameraAngle + 0.001;
+
+// 6. Large dampening
+camera.inertia = 0.98; 
+camera.angularSensibilityX = 1500;
 
             const leftLight = new BABYLON.DirectionalLight("leftLight", new BABYLON.Vector3(1, -0.3, 0.5), scene);
             leftLight.diffuse = new BABYLON.Color3(0.1, 0.8, 0.9);
@@ -732,12 +752,33 @@
             figManager = new BABYLON.SpriteManager("figManager", figDataUrl, 1000, {width: 32, height: 64}, scene);
             smokeManager = new BABYLON.SpriteManager("smokeManager", smokeDataUrl, 3000, {width: 16, height: 16}, scene);
 
-            BABYLON.SceneLoader.ImportMesh("", "./", "stag_test.glb", scene, (meshes, ps, skel, anims) => {
-                stagModel = meshes[0];
-                stagModel.scaling = new BABYLON.Vector3(0.7, 0.7, 0.7);
-                if (anims[4]) anims[4].play(true);
-            });
+    BABYLON.SceneLoader.ImportMesh("", "./", "stag_test.glb", scene, (meshes, ps, skel, anims) => {
+    stagModel = meshes[0];
+    stagModel.scaling = new BABYLON.Vector3(0.7, 0.7, 0.7);
 
+    // 1. Create a material that reacts to normal scene lighting
+    const wireMat = new BABYLON.StandardMaterial("wireframeMat", scene);
+    wireMat.wireframe = true;
+    
+    // Set the physical color of the lines to white
+    wireMat.diffuseColor = new BABYLON.Color3(1, 1, 1);
+    
+    // Allow the lines to reflect a little bit of light
+    wireMat.specularColor = new BABYLON.Color3(1, 1, 1);
+
+    // Notice: We completely removed emissiveColor and disableLighting
+
+    // 2. Apply to the stag
+    meshes.forEach(mesh => {
+        if (mesh.getTotalVertices() > 0) {
+            mesh.material = wireMat;
+        }
+    });
+
+    stagAnims = anims;
+
+    if (stagAnims[4]) stagAnims[4].play(true);
+});
             // Shared material
             const mountainMat = new BABYLON.StandardMaterial("mountainMat", scene);
             mountainMat.specularColor = new BABYLON.Color3(0, 0, 0);
@@ -840,30 +881,62 @@
             // Run the stick figure rendering/animation
             updateFigureAnimation(scene);
 
-            if (stagModel && window.babylonMountain) {
-                angle += 0.009; // Fast run speed
-                const radius = 18;
-                const x = Math.cos(angle) * radius;
-                const z = Math.sin(angle) * radius;
+         if (stagModel && window.babylonMountain && stagAnims.length > 0) {
+    // Get the time passed since the last frame (in milliseconds)
+    let deltaTime = scene.getEngine().getDeltaTime();
+    stagTimer += deltaTime;
 
-                // --- THE RAYCAST METHOD (FIXES SLOPE ERROR) ---
-                const ray = new BABYLON.Ray(new BABYLON.Vector3(x, 50, z), new BABYLON.Vector3(0, -1, 0), 100);
-                const pick = scene.pickWithRay(ray, (m) => m === window.babylonMountain);
+    if (isStagRunning) {
+        // --- 1. RUNNING LOGIC ---
+        
+        // If 4 seconds have passed, stop running!
+        if (stagTimer >= runDuration) {
+            isStagRunning = false;
+            stagTimer = 0; // Reset timer for the pause phase
+            
+            // Swap animations: Stop running [4], play idle
+            if (stagAnims[4]) stagAnims[4].stop();
+            if (stagAnims[idleAnimIndex]) stagAnims[idleAnimIndex].play(true);
+        } else {
+            // Keep moving the stag forward
+            angle += 0.009; // Fast run speed
+            const radius = 18;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
 
-                if (pick.hit) {
-                    stagModel.position.set(x, pick.pickedPoint.y, z);
+            // --- THE RAYCAST METHOD ---
+            const ray = new BABYLON.Ray(new BABYLON.Vector3(x, 50, z), new BABYLON.Vector3(0, -1, 0), 100);
+            const pick = scene.pickWithRay(ray, (m) => m === window.babylonMountain);
 
-                    // Look ahead logic
-                    const nextX = Math.cos(angle + 0.05) * radius;
-                    const nextZ = Math.sin(angle + 0.05) * radius;
-                    const nextRay = new BABYLON.Ray(new BABYLON.Vector3(nextX, 50, nextZ), new BABYLON.Vector3(0, -1, 0), 100);
-                    const nextPick = scene.pickWithRay(nextRay, (m) => m === window.babylonMountain);
+            if (pick.hit) {
+                stagModel.position.set(x, pick.pickedPoint.y, z);
 
-                    if (nextPick.hit) {
-                        stagModel.lookAt(nextPick.pickedPoint);
-                    }
+                const nextX = Math.cos(angle + 0.05) * radius;
+                const nextZ = Math.sin(angle + 0.05) * radius;
+                const nextRay = new BABYLON.Ray(new BABYLON.Vector3(nextX, 50, nextZ), new BABYLON.Vector3(0, -1, 0), 100);
+                const nextPick = scene.pickWithRay(nextRay, (m) => m === window.babylonMountain);
+
+                if (nextPick.hit) {
+                    stagModel.lookAt(nextPick.pickedPoint);
                 }
             }
+        }
+    } else {
+        // --- 2. PAUSING LOGIC ---
+        
+        // If 2 seconds have passed, start running again!
+        if (stagTimer >= pauseDuration) {
+            isStagRunning = true;
+            stagTimer = 0; // Reset timer for the run phase
+            
+            // Swap animations: Stop idle, play running [4]
+            if (stagAnims[idleAnimIndex]) stagAnims[idleAnimIndex].stop();
+            if (stagAnims[4]) stagAnims[4].play(true);
+        }
+        
+        // Notice we DO NOT change the 'angle' here, so the stag stays perfectly still.
+    }
+}
 
             scene.render();
         });
@@ -1073,103 +1146,93 @@
 /* ================================================================
          * AIRPORT FLIP-BOARD ANIMATION
          * ================================================================ */
-        const flipWords = [
-            'PENTESTING', 
-            'DEVELOPMENT', 
-            'ANALYTICS', 
-            'SUPPORT', 
-            'ENGINEERING', 
-            'MAINTENANCE', 
-            'MONITORING'
-        ];
+ const flipWords = [
+    'PENTESTING', 
+    'DEVELOPMENT', 
+    'ANALYTICS', 
+    'SUPPORT', 
+    'ENGINEERING', 
+    'MAINTENANCE', 
+    'MONITORING'
+];
 
-        // Synthwave color palette for the flip-board
-        const flipColors = [
-            { hex: '#00f3ff', rgb: '0, 243, 255' },   // Cyan
-            { hex: '#ff00ff', rgb: '255, 0, 255' },   // Magenta
-            { hex: '#ffff00', rgb: '255, 255, 0' },   // Yellow
-            { hex: '#33ff33', rgb: '51, 255, 51' },   // Neon Green
-            { hex: '#ff3366', rgb: '255, 51, 102' },  // Neon Pink
-            { hex: '#b026ff', rgb: '176, 38, 255' }   // Purple
-        ];
-        
-        const flipBoardEl = document.getElementById('flip-board');
-        let currentWordIndex = 0;
-        let currentColorIndex = 1; // Starts as magenta in your CSS
+const flipBoardEl = document.getElementById('flip-board');
+// We assume your HTML text starts as PENTESTING (index 0)
+let currentWordIndex = 0; 
 
-        // The character set for the mechanical flip
-        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function terminalTypeTo(el, newWord) {
+    const targetText = '[ ' + newWord + ' ]';
+    // Get current text and remove the cursor block if it's there
+    const currentText = el.innerText.replace('█', ''); 
+    
+    // Enforce the white text and cyan glow
+    el.style.color = '#ffffff';
+    el.style.textShadow = '0 0 12px rgba(0, 243, 255, 0.8)';
+    el.style.borderColor = 'rgba(0, 243, 255, 0.5)';
+    el.style.boxShadow = 'inset 0 0 10px rgba(0, 243, 255, 0.2)';
 
-        function airportFlipTo(el, newWord, colorObj) {
-            const targetText = '[ ' + newWord + ' ]';
-            
-            // Apply the new colors to the text, text-shadow, border, and box-shadow
-            el.style.color = colorObj.hex;
-            el.style.textShadow = `0 0 12px rgba(${colorObj.rgb}, 0.8)`;
-            el.style.borderColor = `rgba(${colorObj.rgb}, 0.5)`;
-            el.style.boxShadow = `inset 0 0 10px rgba(${colorObj.rgb}, 0.2)`;
+    if (el.flipInterval) clearInterval(el.flipInterval);
 
-            // Clear any existing animation on this element
-            if (el.flipInterval) clearInterval(el.flipInterval);
-
-            let iterations = 0;
-            // The further right a letter is, the longer it takes to lock in
-            const maxIterations = targetText.length * 2 + 10; 
-
-            el.flipInterval = setInterval(() => {
-                let output = '';
-                
-                for (let i = 0; i < targetText.length; i++) {
-                    const targetChar = targetText[i];
-                    
-                    // Keep brackets and spaces static
-                    if (targetChar === '[' || targetChar === ']' || targetChar === ' ') {
-                        output += targetChar;
-                        continue;
-                    }
-
-                    // Lock letters in from left to right as iterations increase
-                    if (iterations > i * 1.5) {
-                        output += targetChar;
-                    } else {
-                        // Rapidly cycle through random letters for the "flapping" effect
-                        output += letters[Math.floor(Math.random() * letters.length)];
-                    }
-                }
-                
-                el.innerText = output;
-                iterations++;
-
-                // Stop the animation once all letters are locked
-                if (iterations >= maxIterations) {
-                    clearInterval(el.flipInterval);
-                    el.innerText = targetText;
-                }
-            }, 35); // 35ms per tick gives it a fast, mechanical flutter speed
+    let isDeleting = true;
+    let text = currentText;
+    
+    el.flipInterval = setInterval(() => {
+        if (isDeleting) {
+            // Backspace one character at a time, stop at '[ '
+            if (text.length > 2) {
+                text = text.substring(0, text.length - 1);
+            } else {
+                isDeleting = false;
+            }
+        } else {
+            // Type the new word one character at a time
+            if (text.length < targetText.length) {
+                text = targetText.substring(0, text.length + 1);
+            } else {
+                // Done typing
+                clearInterval(el.flipInterval);
+                el.innerText = targetText; 
+                return;
+            }
         }
+        
+        // Update the screen with the text + block cursor
+        el.innerText = text + '█';
+    }, 40); // 40ms per keystroke
+}
 
-        // Trigger the flip board every 4 seconds
-        setInterval(() => {
-            if (!flipBoardEl) return;
-            
-            // Pick a random word, preventing back-to-back duplicates
-            let nextIndex;
-            do {
-                nextIndex = Math.floor(Math.random() * flipWords.length);
-            } while (nextIndex === currentWordIndex);
-            currentWordIndex = nextIndex;
+// Function to pick a new word and fire the animation
+function triggerNextWord() {
+    if (!flipBoardEl) return;
+    
+    // Add 1 to the index. If it hits the end of the list, loop back to 0.
+    currentWordIndex = (currentWordIndex + 1) % flipWords.length;
+    
+    terminalTypeTo(flipBoardEl, flipWords[currentWordIndex]);
+}
 
-            // Pick a random color, preventing back-to-back duplicates
-            let nextColor;
-            do {
-                nextColor = Math.floor(Math.random() * flipColors.length);
-            } while (nextColor === currentColorIndex);
-            currentColorIndex = nextColor;
-            
-            // Fire the mechanical flip animation with the new color
-            airportFlipTo(flipBoardEl, flipWords[currentWordIndex], flipColors[currentColorIndex]);
-            
-        }, 4000);
+// 1. Immediately pick a NEW word and start the typewriter effect on load
+triggerNextWord();
+
+// 2. Continue picking new words every 4 seconds
+setInterval(triggerNextWord, 4000);
+
+
+// Trigger the flip board every 4 seconds
+setInterval(() => {
+    if (!flipBoardEl) return;
+    
+    // Pick a random word, preventing back-to-back duplicates
+    let nextIndex;
+    do {
+        nextIndex = Math.floor(Math.random() * flipWords.length);
+    } while (nextIndex === currentWordIndex);
+    currentWordIndex = nextIndex;
+
+    // Fire the mechanical flip animation
+    airportFlipTo(flipBoardEl, flipWords[currentWordIndex]);
+    
+}, 4000);
 
     </script>
 </body>
